@@ -1,0 +1,21 @@
+target/
+*.class
+*.jar
+*.war
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+
+# Test data that may hold real card numbers
+/testdata/
+*.ipm
