@@ -192,6 +192,20 @@ mkdir -p build && cd build          # so the local sources do not shadow the pac
 same way. Neither is run during the build; both are run by hand when tracking a
 new cardutil release.
 
+Because those files are committed, they only speak for the cardutil release they
+came from. The `cardutil drift` workflow runs weekly, installs the newest
+cardutil, regenerates both files and fails if either moved. Read the result like
+this:
+
+| Drift | Tests | What it means |
+| --- | --- | --- |
+| no | pass | Nothing to do. |
+| yes | pass | cardutil changed something cosmetic. Regenerate and commit. |
+| yes | fail | cardutil changed behaviour. The port needs updating to match. |
+
+The failing run keeps the regenerated files as an artifact, so the new output can
+be read without installing anything.
+
 ## Build
 
 ```sh
