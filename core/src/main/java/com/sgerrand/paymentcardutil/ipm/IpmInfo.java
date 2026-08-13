@@ -7,6 +7,7 @@ import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 /**
@@ -27,12 +28,50 @@ import java.util.Optional;
  * }
  * }</pre>
  *
- * @param valid   whether this looks like an IPM file at all
- * @param reason  why not, when it does not
- * @param blocked whether the file is in 1014 byte blocks
- * @param charset the character set the file appears to use, if it could be told
+ * @param valid    whether this looks like an IPM file at all
+ * @param reason   why not, when it does not
+ * @param blocked  whether the file is in 1014 byte blocks
+ * @param encoding the kind of character set the file appears to use
  */
-public record IpmInfo(boolean valid, String reason, boolean blocked, Optional<Charset> charset) {
+public record IpmInfo(boolean valid, String reason, boolean blocked, Encoding encoding) {
+
+    /**
+     * The kind of character set a file appears to use.
+     *
+     * <p>This is worked out from the message type indicator, which is four
+     * digits. That is enough to tell an ASCII compatible file from an EBCDIC
+     * one, and no more: the digits sit in the same place in every EBCDIC code
+     * page, so cp500 and cp037 cannot be told apart this way. Where the
+     * difference matters, only the file's own paperwork can settle it.
+     */
+    public enum Encoding {
+
+        /** ASCII compatible, such as Latin-1. */
+        ASCII(StandardCharsets.ISO_8859_1),
+
+        /** One of the EBCDIC code pages, but which one cannot be told from here. */
+        EBCDIC(Charset.forName("IBM037")),
+
+        /** Neither, so probably not an IPM file. */
+        UNKNOWN(null);
+
+        private final Charset representative;
+
+        Encoding(Charset representative) {
+            this.representative = representative;
+        }
+
+        /**
+         * A character set of this kind, to read the file with.
+         *
+         * <p>For {@link #EBCDIC} this is a starting point rather than a finding.
+         * If the file turns out to be a different code page, digits and plain
+         * letters still read correctly; punctuation is where they differ.
+         */
+        public Optional<Charset> charset() {
+            return Optional.ofNullable(representative);
+        }
+    }
 
     /** How much of the file is read to work this out. */
     public static final int SAMPLE_SIZE = 2500;
@@ -40,8 +79,17 @@ public record IpmInfo(boolean valid, String reason, boolean blocked, Optional<Ch
     /** Shortest run of bytes that could be a record length, message type and bitmap. */
     private static final int MINIMUM_SAMPLE = 24;
 
+    /**
+     * A character set to read the file with, if one could be worked out.
+     *
+     * @see Encoding#charset()
+     */
+    public Optional<Charset> charset() {
+        return encoding.charset();
+    }
+
     private static IpmInfo invalid(String reason) {
-        return new IpmInfo(false, reason, false, Optional.empty());
+        return new IpmInfo(false, reason, false, Encoding.UNKNOWN);
     }
 
     /** Reads the start of a stream and works out what it holds. */
@@ -76,7 +124,7 @@ public record IpmInfo(boolean valid, String reason, boolean blocked, Optional<Ch
             return invalid(bitmapProblem);
         }
 
-        return new IpmInfo(true, null, looksBlocked(sample), detectCharset(sample));
+        return new IpmInfo(true, null, looksBlocked(sample), detectEncoding(sample));
     }
 
     /**
@@ -115,19 +163,18 @@ public record IpmInfo(boolean valid, String reason, boolean blocked, Optional<Ch
     }
 
     /**
-     * Guesses the character set from the message type indicator, which is always
-     * four digits.
+     * Works out the kind of character set from the message type indicator, which
+     * is always four digits. Whichever reading gives four digits is the one the
+     * file uses.
      */
-    private static Optional<Charset> detectCharset(byte[] sample) {
-        String latin1 = new String(sample, 4, 4, Iso8583Options.DEFAULT_CHARSET);
-        if (isAllDigits(latin1)) {
-            return Optional.of(Iso8583Options.DEFAULT_CHARSET);
+    private static Encoding detectEncoding(byte[] sample) {
+        if (isAllDigits(new String(sample, 4, 4, Iso8583Options.DEFAULT_CHARSET))) {
+            return Encoding.ASCII;
         }
-        String ebcdic = new String(sample, 4, 4, Iso8583Options.EBCDIC_CP037);
-        if (isAllDigits(ebcdic)) {
-            return Optional.of(Iso8583Options.EBCDIC_CP037);
+        if (isAllDigits(new String(sample, 4, 4, Iso8583Options.EBCDIC_CP037))) {
+            return Encoding.EBCDIC;
         }
-        return Optional.empty();
+        return Encoding.UNKNOWN;
     }
 
     private static boolean isAllDigits(String text) {

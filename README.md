@@ -62,7 +62,8 @@ If nobody recorded how the file was written, ask it:
 IpmInfo info = IpmInfo.inspect(Files.newInputStream(path));
 info.valid();     // does this look like an IPM file at all
 info.blocked();   // 1014 byte blocking
-info.charset();   // ISO-8859-1 or an EBCDIC set
+info.encoding();  // ASCII, EBCDIC or UNKNOWN
+info.charset();   // a character set of that kind, to read the file with
 ```
 
 ## Writing one

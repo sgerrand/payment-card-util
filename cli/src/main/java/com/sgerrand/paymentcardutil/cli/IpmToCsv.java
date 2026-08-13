@@ -78,6 +78,22 @@ final class IpmToCsv implements Callable<Integer> {
         return 0;
     }
 
+    /**
+     * What was found out about the file's character set, said plainly.
+     *
+     * <p>The check reads the message type indicator, which is four digits. That
+     * separates ASCII from EBCDIC and no further, so naming one EBCDIC code page
+     * here would claim more than was actually found.
+     */
+    private static String describe(IpmInfo.Encoding encoding) {
+        return switch (encoding) {
+            case ASCII -> "single byte ASCII, such as latin_1";
+            case EBCDIC -> "EBCDIC. Which code page cannot be told from the digits alone, "
+                    + "so try cp500, then cp037";
+            case UNKNOWN -> "could not tell";
+        };
+    }
+
     /** Columns holding a card number, according to the layout. */
     private static List<String> panColumns(IsoConfig config) {
         List<String> columns = new ArrayList<>();
@@ -115,8 +131,7 @@ final class IpmToCsv implements Callable<Integer> {
                 System.err.println("  It does not look like an IPM file. " + info.reason());
                 return;
             }
-            System.err.println("  Character set: "
-                    + info.charset().map(Object::toString).orElse("could not tell"));
+            System.err.println("  Character set: " + describe(info.encoding()));
             System.err.println("  1014 byte blocking: " + (info.blocked() ? "yes" : "no")
                     + (info.blocked() == common.blocked() ? "" : ", which is not what was asked for"));
         } catch (java.io.IOException ignored) {
