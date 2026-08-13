@@ -13,7 +13,9 @@ import java.util.Optional;
  *
  * <p>Where it helps, the exception carries the bytes that caused the trouble
  * and the record they came from, so a bad file can be tracked down without
- * re-reading it.
+ * re-reading it. The message itself stays plain: whoever catches this decides
+ * how much of the context to show, and {@link HexDump} lays the bytes out
+ * readably.
  */
 public class PaymentCardException extends RuntimeException {
 
@@ -50,19 +52,15 @@ public class PaymentCardException extends RuntimeException {
     }
 
     /**
-     * The first {@value #CONTEXT_LIMIT} bytes of context as hex, for log lines
-     * and error messages.
+     * The first {@value #CONTEXT_LIMIT} bytes of context as hex, for a log line
+     * that has room for only one.
+     *
+     * <p>For something readable, pass {@link #binaryContext()} to
+     * {@link HexDump#format(byte[], java.nio.charset.Charset, int)} along with
+     * the character set the file was being read in.
      */
     public Optional<String> contextHex() {
         return binaryContext()
                 .map(bytes -> HexFormat.of().formatHex(bytes, 0, Math.min(bytes.length, CONTEXT_LIMIT)));
-    }
-
-    @Override
-    public String getMessage() {
-        StringBuilder message = new StringBuilder(super.getMessage());
-        recordNumber().ifPresent(number -> message.append(" [record ").append(number).append(']'));
-        contextHex().ifPresent(hex -> message.append(" [data ").append(hex).append(']'));
-        return message.toString();
     }
 }

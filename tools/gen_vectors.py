@@ -16,6 +16,7 @@ import sys
 
 import cardutil
 from cardutil import card, iso8583, key, mciipm, pinblock
+from cardutil.vendor.hexdump import hexdump
 
 OUT = sys.argv[1]
 
@@ -323,6 +324,27 @@ PARAM_CASES = [
     param_file('IP0040T1', PARAM_ROWS, blocked=True),
 ]
 
+HEXDUMP_CASES = [
+    {
+        'name': name,
+        'encoding': encoding,
+        'data_hex': binascii.hexlify(data).decode(),
+        'dump': hexdump(data, result='return', encoding=encoding),
+    }
+    for name, data, encoding in [
+        ('empty', b'', 'latin-1'),
+        ('shorter than a line', b'abc', 'latin-1'),
+        ('exactly one line', bytes(range(16)), 'latin-1'),
+        ('one line and a byte', b'a' * 17, 'latin-1'),
+        ('every byte value', bytes(range(256)), 'latin-1'),
+        ('printable ascii', bytes(range(0x20, 0x7f)), 'latin-1'),
+        ('ebcdic read as latin-1', '1240 PAYMENT'.encode('cp500'), 'latin-1'),
+        ('ebcdic read as cp500', '1240 PAYMENT'.encode('cp500'), 'cp500'),
+        ('ebcdic every byte', bytes(range(256)), 'cp500'),
+        ('a real vbs record', b'\x00\x00\x00\x1cThis is first record 1234567', 'latin-1'),
+    ]
+]
+
 data = {
     'cardutil_version': cardutil.__version__,
     'iso8583': ISO_CASES,
@@ -333,6 +355,7 @@ data = {
     'iso4_pinblock': ISO4_CASES,
     'keys': KEY_CASES,
     'param': PARAM_CASES,
+    'hexdump': HEXDUMP_CASES,
 }
 
 with open(OUT, 'w') as f:

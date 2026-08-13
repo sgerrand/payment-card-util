@@ -38,9 +38,9 @@ Adding `-am` rebuilds `core` too, which then needs
 
 This is the single most important thing about this repository.
 
-`core/src/test/resources/vectors/cardutil.json` holds 46 cases — messages, files,
-pin blocks, keys, parameter tables — each produced by **running the Python
-package**. The parity tests (`*ParityTest`, `@TestFactory` over the vectors)
+`core/src/test/resources/vectors/cardutil.json` holds 56 cases — messages, files,
+pin blocks, keys, parameter tables, hex dumps — each produced by **running the
+Python package**. The parity tests (`*ParityTest`, `@TestFactory` over the vectors)
 replay them and compare byte for byte.
 
 So when a parity test fails, the Java side is wrong. Do not adjust a vector to

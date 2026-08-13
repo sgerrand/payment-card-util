@@ -141,6 +141,53 @@ class IpmToolsTest {
                 "-o", directory.resolve("never.csv").toString()));
     }
 
+    @Test
+    void aBadRecordIsReportedWithAHexDump() throws IOException {
+        // A record whose length says 40 bytes but whose contents are nonsense.
+        Path broken = directory.resolve("broken.ipm");
+        byte[] record = new byte[44];
+        System.arraycopy(new byte[] {0, 0, 0, 40}, 0, record, 0, 4);
+        java.util.Arrays.fill(record, 4, 44, (byte) 0xFF);
+        Files.write(broken, record);
+
+        String errors = runCapturingErrors("mci-ipm-to-csv", broken.toString(),
+                "--no1014blocking", "-o", directory.resolve("never.csv").toString());
+
+        assertTrue(errors.contains("Processing stopped:"), errors);
+        assertTrue(errors.contains("The trouble is in record 1."), errors);
+        // The dump, not a wall of hex: offset, spaced bytes, then a text column.
+        assertTrue(errors.contains("00000000: 00 00 00 28 FF FF FF FF "), errors);
+    }
+
+    @Test
+    void theDumpIsReadInTheCharacterSetBeingParsed() throws IOException {
+        // An EBCDIC record claiming a data element that the layout does not use,
+        // so it fails after the message type has been read.
+        Path broken = directory.resolve("ebcdic.ipm");
+        byte[] body = "1240".getBytes(Iso8583Options.EBCDIC_CP500);
+        byte[] record = new byte[4 + body.length + 16];
+        record[3] = (byte) (body.length + 16);
+        System.arraycopy(body, 0, record, 4, body.length);
+        record[4 + body.length] = (byte) 0x01;   // DE 8, which the layout has no entry for
+        Files.write(broken, record);
+
+        String errors = runCapturingErrors("mci-ipm-to-csv", broken.toString(),
+                "--no1014blocking", "--in-encoding", "cp500",
+                "-o", directory.resolve("never.csv").toString());
+
+        assertTrue(errors.contains("read as IBM500"), errors);
+        assertTrue(errors.contains("1240"), "the text column should show the message type: " + errors);
+    }
+
+    private static String runCapturingErrors(String... args) {
+        java.io.StringWriter errors = new java.io.StringWriter();
+        CommandLine command = new CommandLine(new Cardutil())
+                .setExecutionExceptionHandler(new Cardutil.ErrorHandler())
+                .setErr(new java.io.PrintWriter(errors));
+        assertNotEquals(0, command.execute(args));
+        return errors.toString();
+    }
+
     private static List<Iso8583Message> readMessages(Path file, Iso8583Options options, boolean blocked)
             throws IOException {
         List<Iso8583Message> messages = new ArrayList<>();
