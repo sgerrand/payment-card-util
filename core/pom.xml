@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.sgerrand</groupId>
+    <artifactId>payment-card-util-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>payment-card-util</artifactId>
+  <packaging>jar</packaging>
+
+  <name>payment-card-util</name>
+  <description>Payment card library: card numbers, ISO 8583 messages, Mastercard IPM files, pin blocks and key handling. No runtime dependencies.</description>
+
+  <dependencies>
+    <!-- Test only: reads the golden vector files generated from Python cardutil.
+         The library itself has no runtime dependencies. -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

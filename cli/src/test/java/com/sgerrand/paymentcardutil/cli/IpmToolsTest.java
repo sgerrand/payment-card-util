@@ -1,0 +1,153 @@
+package com.sgerrand.paymentcardutil.cli;
+
+import com.sgerrand.paymentcardutil.ipm.IpmReader;
+import com.sgerrand.paymentcardutil.ipm.IpmWriter;
+import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
+import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import picocli.CommandLine;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Drives the command line tools over real files.
+ */
+class IpmToolsTest {
+
+    @TempDir
+    Path directory;
+
+    private Path ipmFile;
+
+    private static final List<Iso8583Message> MESSAGES = List.of(
+            Iso8583Message.builder()
+                    .mti("1240")
+                    .de(2, "4444555566667777")
+                    .de(4, 12345L)
+                    .de(12, LocalDateTime.of(2020, 3, 4, 5, 6, 7))
+                    .de(37, "REF00000001")
+                    .pds(158, "0000000000")
+                    .build(),
+            Iso8583Message.builder()
+                    .mti("1644")
+                    .de(2, "5555444433332222")
+                    .de(4, 0L)
+                    .de(38, "AUTH01")
+                    .build());
+
+    @BeforeEach
+    void writeIpmFile() throws IOException {
+        ipmFile = directory.resolve("clearing.ipm");
+        try (OutputStream out = Files.newOutputStream(ipmFile);
+             IpmWriter writer = IpmWriter.blocked(out)) {
+            writer.writeAll(MESSAGES);
+        }
+    }
+
+    private static int run(String... args) {
+        return new CommandLine(new Cardutil()).execute(args);
+    }
+
+    @Test
+    void ipmToCsvWritesTheConfiguredColumns() throws IOException {
+        Path csv = directory.resolve("out.csv");
+        assertEquals(0, run("mci-ipm-to-csv", ipmFile.toString(), "-o", csv.toString()));
+
+        List<String> lines = Files.readAllLines(csv);
+        assertEquals(3, lines.size(), "a header and one line per message");
+        assertTrue(lines.get(0).startsWith("MTI,DE2,DE3,DE4,DE12"), lines.get(0));
+        assertTrue(lines.get(1).startsWith("1240,"), lines.get(1));
+    }
+
+    @Test
+    void cardNumbersAreMaskedUnlessAskedFor() throws IOException {
+        Path masked = directory.resolve("masked.csv");
+        Path plain = directory.resolve("plain.csv");
+        run("mci-ipm-to-csv", ipmFile.toString(), "-o", masked.toString());
+        run("mci-ipm-to-csv", ipmFile.toString(), "-o", plain.toString(), "--unmask-pan");
+
+        String maskedText = Files.readString(masked);
+        assertTrue(maskedText.contains("444455******7777"), maskedText);
+        assertFalse(maskedText.contains("4444555566667777"), "the full number must not be written");
+        assertTrue(Files.readString(plain).contains("4444555566667777"));
+    }
+
+    @Test
+    void datesAreWrittenWithSecondsAndASpace() throws IOException {
+        Path csv = directory.resolve("dates.csv");
+        run("mci-ipm-to-csv", ipmFile.toString(), "-o", csv.toString());
+        assertTrue(Files.readString(csv).contains("2020-03-04 05:06:07"), "date format");
+    }
+
+    @Test
+    void csvToIpmRebuildsTheFile() throws IOException {
+        Path csv = directory.resolve("out.csv");
+        Path rebuilt = directory.resolve("rebuilt.ipm");
+        run("mci-ipm-to-csv", ipmFile.toString(), "-o", csv.toString(), "--unmask-pan");
+        assertEquals(0, run("mci-csv-to-ipm", csv.toString(), "-o", rebuilt.toString()));
+
+        assertEquals(readMessages(ipmFile, Iso8583Options.defaults(), true),
+                readMessages(rebuilt, Iso8583Options.defaults(), true));
+    }
+
+    @Test
+    void encodeChangesCharacterSetAndBlocking() throws IOException {
+        Path encoded = directory.resolve("encoded.ipm");
+        assertEquals(0, run("mci-ipm-encode", ipmFile.toString(), "-o", encoded.toString(),
+                "--in-encoding", "latin_1", "--out-encoding", "cp500", "--out-format", "VBS"));
+
+        assertNotEquals(Files.readAllBytes(ipmFile).length, Files.readAllBytes(encoded).length,
+                "dropping the blocking should change the size");
+
+        List<Iso8583Message> readBack = readMessages(
+                encoded, Iso8583Options.defaults().withCharset(Iso8583Options.EBCDIC_CP500), false);
+        assertEquals(MESSAGES.size(), readBack.size());
+        assertEquals("4444555566667777", readBack.get(0).text(2).orElseThrow());
+    }
+
+    @Test
+    void encodeLeavesPrivateDataExactlyAsItWasRead() throws IOException {
+        Path encoded = directory.resolve("encoded.ipm");
+        run("mci-ipm-encode", ipmFile.toString(), "-o", encoded.toString(),
+                "--in-encoding", "latin_1", "--out-encoding", "latin_1");
+
+        List<Iso8583Message> original = readMessages(ipmFile, Iso8583Options.defaults(), true);
+        List<Iso8583Message> copied = readMessages(encoded, Iso8583Options.defaults(), true);
+        assertEquals(original.get(0).text(48), copied.get(0).text(48), "DE48 carried across unchanged");
+        assertEquals("0000000000", copied.get(0).pds(158).orElseThrow());
+    }
+
+    @Test
+    void aFileThatIsNotIpmFailsWithAnExplanation() throws IOException {
+        Path rubbish = directory.resolve("rubbish.bin");
+        Files.write(rubbish, "this is not an IPM file, not even close".getBytes(StandardCharsets.UTF_8));
+
+        assertNotEquals(0, run("mci-ipm-to-csv", rubbish.toString(),
+                "-o", directory.resolve("never.csv").toString()));
+    }
+
+    private static List<Iso8583Message> readMessages(Path file, Iso8583Options options, boolean blocked)
+            throws IOException {
+        List<Iso8583Message> messages = new ArrayList<>();
+        try (InputStream in = Files.newInputStream(file);
+             IpmReader reader = IpmReader.open(in, options, blocked)) {
+            reader.forEach(messages::add);
+        }
+        return messages;
+    }
+}
