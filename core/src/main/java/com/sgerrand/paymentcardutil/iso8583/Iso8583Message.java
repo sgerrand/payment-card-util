@@ -2,6 +2,7 @@ package com.sgerrand.paymentcardutil.iso8583;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -29,7 +30,9 @@ import java.util.TreeSet;
  * across from cardutil.
  *
  * <p>Instances are immutable. Build one with {@link #builder()}, or change a
- * copy with {@link #toBuilder()}.
+ * copy with {@link #toBuilder()}. Chip data is the one value held as a
+ * {@code byte[]}, and it is copied on the way in and on the way out, so an
+ * array a caller still holds cannot be used to change the message later.
  */
 public final class Iso8583Message {
 
@@ -41,8 +44,26 @@ public final class Iso8583Message {
 
     private final Map<String, Object> values;
 
+    /**
+     * Whether any value is a {@code byte[]}, which only chip data is. Lets
+     * {@link #values()} hand back its map untouched for the common message,
+     * and copy only where there is a mutable array to protect.
+     */
+    private final boolean hasBinaryValues;
+
     private Iso8583Message(Map<String, Object> values) {
-        this.values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
+        Map<String, Object> copy = new LinkedHashMap<>();
+        boolean binary = false;
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            Object value = entry.getValue();
+            if (value instanceof byte[] bytes) {
+                value = bytes.clone();
+                binary = true;
+            }
+            copy.put(entry.getKey(), value);
+        }
+        this.values = Collections.unmodifiableMap(copy);
+        this.hasBinaryValues = binary;
     }
 
     public static Builder builder() {
@@ -79,9 +100,20 @@ public final class Iso8583Message {
         return text(MTI_KEY);
     }
 
-    /** Every value, keyed as described on this class. Unmodifiable. */
+    /**
+     * Every value, keyed as described on this class. Unmodifiable, and chip
+     * data is handed back as a copy, so nothing here can change the message.
+     */
     public Map<String, Object> values() {
-        return values;
+        return hasBinaryValues ? Collections.unmodifiableMap(copyOfValues()) : values;
+    }
+
+    /** The values with every {@code byte[]} cloned, so the originals stay put. */
+    private Map<String, Object> copyOfValues() {
+        Map<String, Object> copy = new LinkedHashMap<>();
+        values.forEach((key, value) ->
+                copy.put(key, value instanceof byte[] bytes ? bytes.clone() : value));
+        return copy;
     }
 
     /** Whether the message holds the given key. */
@@ -109,9 +141,10 @@ public final class Iso8583Message {
         return numbers;
     }
 
-    /** The raw value behind a key. */
+    /** The raw value behind a key. Chip data comes back as a copy. */
     public Optional<Object> value(String key) {
-        return Optional.ofNullable(values.get(key));
+        return Optional.ofNullable(values.get(key))
+                .map(value -> value instanceof byte[] bytes ? bytes.clone() : value);
     }
 
     /** A value as text, whatever type it was stored as. */
@@ -220,14 +253,44 @@ public final class Iso8583Message {
         }
     }
 
+    /**
+     * Whether both messages hold the same keys and the same values.
+     *
+     * <p>Chip data is a {@code byte[]}, which compares by identity rather than
+     * by content, so this walks the values rather than leaning on
+     * {@link Map#equals}. Without that, parsing the same bytes twice gives two
+     * messages that are not equal.
+     */
     @Override
     public boolean equals(Object other) {
-        return other instanceof Iso8583Message message && message.values.equals(values);
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof Iso8583Message message) || message.values.size() != values.size()) {
+            return false;
+        }
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            // Values are never null, so a missing key compares unequal here.
+            if (!Objects.deepEquals(entry.getValue(), message.values.get(entry.getKey()))) {
+                return false;
+            }
+        }
+        return true;
     }
 
+    /**
+     * Built the way {@link Map#hashCode} builds one, but taking chip data by
+     * its content so that equal messages hash alike.
+     */
     @Override
     public int hashCode() {
-        return values.hashCode();
+        int hash = 0;
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            Object value = entry.getValue();
+            int valueHash = value instanceof byte[] bytes ? Arrays.hashCode(bytes) : value.hashCode();
+            hash += entry.getKey().hashCode() ^ valueHash;
+        }
+        return hash;
     }
 
     /**
