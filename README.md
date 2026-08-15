@@ -173,6 +173,11 @@ Everything else matches byte for byte. These do not, and each is deliberate.
   identical.
 - **Private data too long to fit raises an error.** cardutil silently drops a
   subelement of 993 characters or more.
+- **A message must have a message type indicator to be written.** cardutil
+  writes a record without one, and then cannot read that record back: its own
+  reader answers "Failed decoding MTI field". The type indicator sits in front
+  of the bitmap, so a missing or short one shifts the rest of the record along.
+  Writing it out is refused rather than producing a file nothing can read.
 - **`--in-format` and `--out-format` take `VBS` or `BLOCKED_1014`,** where
   cardutil takes `vbs` or `1014`.
 

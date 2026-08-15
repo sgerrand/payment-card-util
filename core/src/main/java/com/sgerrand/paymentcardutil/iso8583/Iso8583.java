@@ -116,7 +116,12 @@ public final class Iso8583 {
      * carry them, in tag order. Where a message holds both {@code PDSxxxx}
      * values and the data element that carries them, the packed values win.
      *
-     * @throws Iso8583Exception if a value does not fit its field
+     * <p>The message needs a message type indicator of four characters. cardutil
+     * writes one without, and then cannot read what it wrote; this refuses
+     * instead.
+     *
+     * @throws Iso8583Exception if a value does not fit its field, or the message
+     *                          type indicator is missing or the wrong length
      */
     public static byte[] serialize(Iso8583Message message, Iso8583Options options) {
         Map<String, Object> values = new LinkedHashMap<>(message.values());
@@ -140,13 +145,43 @@ public final class Iso8583 {
         }
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Object mti = values.get(Iso8583Message.MTI_KEY);
-        if (mti != null) {
-            out.writeBytes(String.valueOf(mti).getBytes(options.charset()));
-        }
+        out.writeBytes(checkMti(values.get(Iso8583Message.MTI_KEY)).getBytes(options.charset()));
         out.writeBytes(writeBitmap(bitmap, options));
         out.writeBytes(body.toByteArray());
         return out.toByteArray();
+    }
+
+    /**
+     * Checks the message type indicator will read back, and returns it.
+     *
+     * <p>cardutil writes a message that has no message type indicator, or one
+     * that is not four characters, and then cannot read the result: its own
+     * reader answers "Failed decoding MTI field". Since the type indicator sits
+     * in front of the bitmap, a wrong length shifts everything after it along,
+     * so the record is not merely missing a field, it is unreadable. Refusing
+     * beats writing a record nothing can make sense of.
+     *
+     * <p>What is allowed here is what {@link #parse} allows, so a message read
+     * from a file can always be written back.
+     *
+     * @throws Iso8583Exception if the message type indicator is missing, the
+     *                          wrong length, or not a number
+     */
+    private static String checkMti(Object value) {
+        if (value == null) {
+            throw new Iso8583Exception("The message has no message type indicator");
+        }
+        String mti = String.valueOf(value);
+        if (mti.length() != MTI_LENGTH) {
+            throw new Iso8583Exception("The message type indicator is " + mti.length()
+                    + " characters, and has to be " + MTI_LENGTH + ": " + mti);
+        }
+        try {
+            Integer.parseInt(mti.trim());
+        } catch (NumberFormatException e) {
+            throw new Iso8583Exception("Message type indicator is not a number: " + mti, e);
+        }
+        return mti;
     }
 
     private static Bitmap readBitmap(byte[] message, Iso8583Options options) {
