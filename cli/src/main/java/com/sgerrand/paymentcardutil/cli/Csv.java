@@ -135,19 +135,24 @@ final class Csv {
                 } else {
                     inQuotes = false;
                     if (peek >= 0) {
-                        // Push the character back by handling it here.
+                        // Push the character back by handling it here, the same
+                        // way the unquoted switch below would have handled it.
                         ch = (char) peek;
                         if (ch == ',') {
                             row.add(cell.toString());
                             cell.setLength(0);
-                        } else if (ch == '\n' || ch == '\r') {
+                        } else if (ch == '\n') {
                             row.add(cell.toString());
                             cell.setLength(0);
                             rows.add(row);
                             row = new ArrayList<>();
                             rowStarted = false;
-                            continue;
-                        } else {
+                        } else if (ch != '\r') {
+                            // A carriage return here is outside the quotes, so
+                            // it is ignored and the newline after it ends the
+                            // row. Ending the row on the carriage return
+                            // instead would leave that newline to start, and
+                            // immediately end, a second empty row.
                             cell.append(ch);
                         }
                     }
