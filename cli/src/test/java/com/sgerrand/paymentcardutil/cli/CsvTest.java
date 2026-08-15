@@ -92,6 +92,40 @@ class CsvTest {
                 Csv.read(new StringReader("a,b\n\"one\ntwo\",x\n")));
     }
 
+    /**
+     * Excel and Python's csv module both end rows with a carriage return and a
+     * newline. Ending the row on the carriage return would leave the newline to
+     * start, and immediately end, a row of its own, and mci-csv-to-ipm would
+     * write an empty message for each one.
+     */
+    @Test
+    void readingCopesWithCarriageReturnsAfterAQuotedCell() throws IOException {
+        assertEquals(
+                List.of(Map.of("a", "1", "b", "has,comma"), Map.of("a", "2", "b", "also,comma")),
+                Csv.read(new StringReader("a,b\r\n1,\"has,comma\"\r\n2,\"also,comma\"\r\n")));
+    }
+
+    @Test
+    void readingCopesWithCarriageReturnsAfterAPlainCell() throws IOException {
+        assertEquals(
+                List.of(Map.of("a", "1", "b", "2")),
+                Csv.read(new StringReader("a,b\r\n1,2\r\n")));
+    }
+
+    @Test
+    void aQuotedCellKeepsTheLineEndingsInsideIt() throws IOException {
+        assertEquals(
+                List.of(Map.of("a", "one\r\ntwo", "b", "x")),
+                Csv.read(new StringReader("a,b\r\n\"one\r\ntwo\",x\r\n")));
+    }
+
+    @Test
+    void aQuotedCellCanEndTheFileWithoutANewline() throws IOException {
+        assertEquals(
+                List.of(Map.of("a", "1", "b", "has,comma")),
+                Csv.read(new StringReader("a,b\r\n1,\"has,comma\"")));
+    }
+
     @Test
     void anEmptyFileHasNoRows() throws IOException {
         assertEquals(List.of(), Csv.read(new StringReader("")));
