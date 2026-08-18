@@ -1,0 +1,96 @@
+name: Publish
+
+# Publishing a GitHub Release sends the library to Maven Central.
+#
+# The release itself is cut by release.yml. That workflow signs its work with a
+# GitHub App token rather than the built in one, which is what allows the
+# release it creates to start this workflow; a release created with the default
+# token would not.
+#
+# What goes out is permanent. Maven Central never lets a version be replaced or
+# withdrawn, and autoPublish below means no one is asked to confirm, so the
+# version is checked against the release tag before anything is sent.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+# Never let two releases publish at once.
+concurrency:
+  group: publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to Maven Central
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the released commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Check the version matches the release tag
+        run: |
+          tag='${{ github.event.release.tag_name }}'
+          expected="${tag#v}"
+          actual=$(mvn --batch-mode -q help:evaluate -Dexpression=project.version -DforceStdout)
+
+          echo "Release tag: $tag"
+          echo "Project version: $actual"
+
+          case "$actual" in
+            *-SNAPSHOT)
+              echo "::error::Refusing to publish a snapshot version ($actual)."
+              exit 1
+              ;;
+          esac
+
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Tag $tag expects version $expected, but the project says $actual."
+            exit 1
+          fi
+
+      # Only the library and the parent it inherits from. The parent has to go
+      # too, or nothing can resolve the library. The command line tools are not
+      # published: the shaded jar bundles picocli and Jackson, and is meant to be
+      # downloaded and run rather than depended on.
+      - name: Publish
+        run: >
+          mvn --batch-mode --no-transfer-progress
+          -Prelease
+          -pl .,core
+          -DautoPublish=true
+          -DwaitUntil=published
+          deploy
+        env:
+          MAVEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+
+      - name: Say where it went
+        run: |
+          version='${{ github.event.release.tag_name }}'
+          {
+            echo "## Published"
+            echo ""
+            echo "\`com.sgerrand:payment-card-util:${version#v}\` is on Maven Central."
+            echo ""
+            echo "It may take a few minutes to appear in search."
+          } >> "$GITHUB_STEP_SUMMARY"

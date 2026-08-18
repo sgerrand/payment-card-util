@@ -221,6 +221,34 @@ be read without installing anything.
 mvn verify
 ```
 
+## Releasing
+
+Releases are cut by [release-please](https://github.com/googleapis/release-please).
+A push to `main` keeps a release pull request up to date from the commit
+messages. Merging it tags the version, writes `CHANGELOG.md`, sets the version
+in every `pom.xml` and publishes a GitHub Release.
+
+Publishing that release sends the library to Maven Central. Only
+`payment-card-util` and the parent it inherits from are published; the command
+line tools are a download from the GitHub Release, since the shaded jar bundles
+its dependencies and is meant to be run rather than depended on.
+
+Nothing is held back for approval, and a version on Maven Central can never be
+replaced or withdrawn, so the publish workflow refuses to run if the project
+version does not match the release tag, or if it is still a snapshot.
+
+Four repository secrets are needed, on top of the two the release workflow uses:
+
+| Secret | What it is |
+| --- | --- |
+| `MAVEN_CENTRAL_USERNAME` | User token name from the Central Portal |
+| `MAVEN_CENTRAL_TOKEN` | The matching token |
+| `MAVEN_GPG_PRIVATE_KEY` | Armoured private key used to sign artifacts |
+| `MAVEN_GPG_PASSPHRASE` | Its passphrase |
+
+The `com.sgerrand` group also has to be verified on the Central Portal, which
+is done once by adding a DNS TXT record to `sgerrand.com`.
+
 ## Handling card data
 
 Test data in this repository uses published test card numbers only. Never commit
