@@ -261,6 +261,11 @@ The Java version lives in `.tool-versions`, which asdf and mise read, and which
 the workflows point at so that local and CI builds agree. The test matrix is the
 exception: it names its versions, since running on more than one is the point.
 
+Formatting is google-java-format in its four space form, applied by Spotless.
+`mvn verify` fails on anything out of shape; `mvn spotless:apply` puts it back.
+The generated `DefaultConfig.java` is left alone, since its generator decides
+how it looks.
+
 ## Releasing
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please).
