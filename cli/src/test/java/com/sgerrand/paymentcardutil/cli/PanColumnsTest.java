@@ -46,26 +46,27 @@ class PanColumnsTest {
         IsoConfig config = IsoConfig.defaults().toBuilder()
                 .field(34, field("Card number, extended", FieldProcessor.PAN))
                 .field(2, field("Card number", FieldProcessor.PAN_PREFIX))
+                .field(35, field("Track 2 data", FieldProcessor.NONE))
                 .build();
 
         assertEquals(List.of("DE2", "DE34"), IpmToCsv.panColumns(config));
     }
 
     @Test
-    void aLayoutMarkingNothingFallsBackToTheName() {
+    void anElementNamedPanIsMaskedWithNoProcessorToGoOn() {
         // What the built-in Mastercard layout does: it comes from cardutil's
         // config, and cardutil marks no element, since it does not mask.
         assertEquals(List.of("DE2"), IpmToCsv.panColumns(IsoConfig.defaults()));
     }
 
     @Test
-    void theNameIsIgnoredOnceTheLayoutMarksSomething() {
+    void bothSignalsCount() {
         IsoConfig config = IsoConfig.defaults().toBuilder()
                 .field(34, field("Card number, extended", FieldProcessor.PAN))
                 .build();
 
-        // DE2 is still called PAN in the built-in layout, but the layout now
-        // says outright which element it means, so the name stops deciding.
-        assertEquals(List.of("DE34"), IpmToCsv.panColumns(config));
+        // DE34 is marked outright; DE2 is still called PAN in the built-in
+        // layout. Marking one element must not unmask the other.
+        assertEquals(List.of("DE2", "DE34"), IpmToCsv.panColumns(config));
     }
 }

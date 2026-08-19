@@ -34,10 +34,7 @@ final class IpmToCsv implements Callable<Integer> {
     private static final List<FieldProcessor> PAN_PROCESSORS =
             List.of(FieldProcessor.PAN, FieldProcessor.PAN_PREFIX);
 
-    /**
-     * The element name that marks a card number in a layout that marks none by
-     * processor. See {@link #panColumns(IsoConfig)}.
-     */
+    /** The element name that also marks a card number. See {@link #panColumns(IsoConfig)}. */
     private static final String PAN_FIELD_NAME = "PAN";
 
     @Parameters(index = "0", paramLabel = "IPM_FILE", description = "The IPM file to read.")
@@ -105,33 +102,28 @@ final class IpmToCsv implements Callable<Integer> {
     /**
      * Columns holding a card number, according to the layout.
      *
-     * <p>A layout says which element that is by giving it the {@code PAN} or
-     * {@code PAN-PREFIX} field processor, which is cardutil's own way of
-     * marking one and the only machine readable signal there is. The element's
-     * name is a label meant for people: it can be translated, spelled out in
-     * full, or reused, so it decides nothing while the layout marks anything.
+     * <p>Two things mark one, and either is enough. The {@code PAN} or
+     * {@code PAN-PREFIX} field processor is cardutil's own way of saying it and
+     * the only machine readable signal there is. The element's name is a label
+     * meant for people, so it can be translated, written out in full or reused,
+     * which makes it a poor signal on its own.
      *
-     * <p>The built-in Mastercard layout marks nothing, because it is generated
-     * from cardutil's config and cardutil does not mask. So a layout with no
-     * marked element falls back to the name, which is what keeps the default
-     * run masking rather than quietly writing full card numbers.
+     * <p>Both count because neither covers everything. The built-in Mastercard
+     * layout marks no element by processor, since it is generated from
+     * cardutil's config and cardutil does not mask, so going by the processor
+     * alone would quietly write full card numbers. Going by the name alone
+     * misses an element a layout marks outright. Taking either means a column
+     * has to shake off both to come out unmasked.
      */
     static List<String> panColumns(IsoConfig config) {
-        List<String> marked = PAN_PROCESSORS.stream()
-                .flatMap(processor -> config.bitsWithProcessor(processor).stream())
-                .sorted()
-                .map(Iso8583Message::deKey)
-                .toList();
-        if (!marked.isEmpty()) {
-            return marked;
-        }
-        List<String> named = new ArrayList<>();
+        List<String> columns = new ArrayList<>();
         config.bitConfig().forEach((bit, field) -> {
-            if (PAN_FIELD_NAME.equalsIgnoreCase(field.name())) {
-                named.add(Iso8583Message.deKey(bit));
+            if (PAN_PROCESSORS.contains(field.processor())
+                    || PAN_FIELD_NAME.equalsIgnoreCase(field.name())) {
+                columns.add(Iso8583Message.deKey(bit));
             }
         });
-        return named;
+        return columns;
     }
 
     private static Map<String, ?> mask(Map<String, Object> values, List<String> columns) {
