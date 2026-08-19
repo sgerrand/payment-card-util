@@ -257,6 +257,10 @@ be read without installing anything.
 mvn verify
 ```
 
+The Java version lives in `.tool-versions`, which asdf and mise read, and which
+the workflows point at so that local and CI builds agree. The test matrix is the
+exception: it names its versions, since running on more than one is the point.
+
 ## Releasing
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please).
