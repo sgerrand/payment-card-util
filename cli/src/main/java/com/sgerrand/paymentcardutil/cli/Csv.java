@@ -2,6 +2,7 @@ package com.sgerrand.paymentcardutil.cli;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.PushbackReader;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -114,7 +115,10 @@ final class Csv {
     }
 
     /** Splits CSV text into rows of cells, honouring quotes and quoted newlines. */
-    private static List<List<String>> parse(Reader in) throws IOException {
+    private static List<List<String>> parse(Reader reader) throws IOException {
+        // One character of pushback, so the character after a closing quote can
+        // be handed back to the main loop rather than handled a second time.
+        PushbackReader in = new PushbackReader(reader);
         List<List<String>> rows = new ArrayList<>();
         List<String> row = new ArrayList<>();
         StringBuilder cell = new StringBuilder();
@@ -135,26 +139,7 @@ final class Csv {
                 } else {
                     inQuotes = false;
                     if (peek >= 0) {
-                        // Push the character back by handling it here, the same
-                        // way the unquoted switch below would have handled it.
-                        ch = (char) peek;
-                        if (ch == ',') {
-                            row.add(cell.toString());
-                            cell.setLength(0);
-                        } else if (ch == '\n') {
-                            row.add(cell.toString());
-                            cell.setLength(0);
-                            rows.add(row);
-                            row = new ArrayList<>();
-                            rowStarted = false;
-                        } else if (ch != '\r') {
-                            // A carriage return here is outside the quotes, so
-                            // it is ignored and the newline after it ends the
-                            // row. Ending the row on the carriage return
-                            // instead would leave that newline to start, and
-                            // immediately end, a second empty row.
-                            cell.append(ch);
-                        }
+                        in.unread(peek);
                     }
                 }
                 continue;
@@ -171,7 +156,9 @@ final class Csv {
                     rowStarted = true;
                 }
                 case '\r' -> {
-                    // Ignore: a following newline ends the row.
+                    // Ignore: a following newline ends the row. Ending the row
+                    // on the carriage return instead would leave that newline
+                    // to start, and immediately end, a second empty row.
                 }
                 case '\n' -> {
                     row.add(cell.toString());
