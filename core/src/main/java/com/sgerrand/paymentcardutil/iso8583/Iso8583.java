@@ -1,6 +1,5 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
-import com.sgerrand.paymentcardutil.card.Pan;
 import com.sgerrand.paymentcardutil.config.FieldConfig;
 import com.sgerrand.paymentcardutil.config.FieldProcessor;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
@@ -255,12 +254,13 @@ public final class Iso8583 {
             return fieldLength + lengthSize;
         }
 
+        // PAN and PAN_PREFIX only mark a field as holding a card number; they
+        // do not touch the value. cardutil masks and truncates here, which
+        // makes a file it has read impossible to write back unchanged, and
+        // leaves a caller no way to ask for the real value. Masking belongs to
+        // whatever shows the data, so mci-ipm-to-csv does it and --unmask-pan
+        // turns it off.
         String text = new String(raw, options.charset());
-        text = switch (field.processor()) {
-            case PAN -> Pan.maskDigits(text);
-            case PAN_PREFIX -> text.substring(0, Math.min(9, text.length()));
-            default -> text;
-        };
 
         builder.put(Iso8583Message.deKey(bit), toValue(bit, text, field));
 

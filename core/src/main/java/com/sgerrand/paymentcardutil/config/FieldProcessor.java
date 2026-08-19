@@ -17,10 +17,21 @@ public enum FieldProcessor {
     /** Break the field into ICC tags, keyed {@code TAGxxxx}. */
     ICC,
 
-    /** Mask the value, keeping the first six and last four digits. */
+    /**
+     * The field holds a card number.
+     *
+     * <p>A marker, not a change: the value is read as it stands. Tools that
+     * show the data mask it, which is what {@code mci-ipm-to-csv} does unless
+     * {@code --unmask-pan} is passed.
+     */
     PAN,
 
-    /** Keep only the first nine digits of the value. */
+    /**
+     * The field holds the first nine digits of a card number.
+     *
+     * <p>A marker, as {@link #PAN} is. The value is read as it stands, however
+     * long the file wrote it.
+     */
     PAN_PREFIX;
 
     /**

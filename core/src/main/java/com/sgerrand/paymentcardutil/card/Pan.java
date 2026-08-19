@@ -80,8 +80,9 @@ public record Pan(String digits) {
      * Masks any run of digits, keeping the first six and last four.
      *
      * <p>Unlike the rest of this class, nothing is checked: the input does not
-     * have to be a valid card number. This is what the ISO 8583 {@code PAN}
-     * field processor uses, where the field holds whatever the file holds.
+     * have to be a valid card number. A data element holds whatever the file
+     * holds, so the tools that write card numbers out call this rather than
+     * building a {@link Pan}.
      *
      * @param digits the digits to mask
      * @return the masked digits, or the input unchanged if it is 10 characters

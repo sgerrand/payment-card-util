@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  *
  * <p>cardutil 0.7.3 writes such a record anyway, and then fails on its own
  * output with "Failed decoding MTI field". This port refuses to write it, which
- * is the sixth divergence listed in the README.
+ * is one of the divergences listed in the README.
  */
 class Iso8583SerializeMtiTest {
 

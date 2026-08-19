@@ -189,13 +189,17 @@ holding `cardutil.json`.
 Everything else matches byte for byte. These do not, and each is deliberate.
 
 - **`mci-ipm-to-csv` masks card numbers.** cardutil writes them in full. Pass
-  `--unmask-pan` for the same output as the Python tool. The library itself does
-  not mask: `Iso8583.parse` returns what the file holds, so a file can be read
-  and written back unchanged. A column counts as holding a card number if the
-  layout gives it the `PAN` or `PAN-PREFIX` field processor, or names it `PAN`.
-  Either is enough: the built-in Mastercard layout marks no element by
-  processor, since it comes from cardutil's own config, and a layout that does
-  mark one may still name another.
+  `--unmask-pan` for the same output as the Python tool. A column counts as
+  holding a card number if the layout gives it the `PAN` or `PAN-PREFIX` field
+  processor, or names it `PAN`. Either is enough: the built-in Mastercard
+  layout marks no element by processor, since it comes from cardutil's own
+  config, and a layout that does mark one may still name another.
+- **The `PAN` and `PAN-PREFIX` field processors only mark a field.** cardutil
+  masks the value and cuts the prefix short while parsing. That loses what the
+  file actually held, so the message cannot be written back unchanged and a
+  caller who needs the real number cannot ask for it. Here they say which field
+  holds a card number and nothing more: `Iso8583.parse` returns what the file
+  holds, and masking is left to whatever shows the data.
 - **`IpmInfo.inspect` detects blocking properly.** cardutil only reports blocking
   for files of exactly one or two blocks, so it answers "not blocked" for almost
   every real file.

@@ -88,6 +88,51 @@ class IpmToolsTest {
     }
 
     @Test
+    void aLayoutMarkingTheCardNumberStillHonoursUnmaskPan() throws IOException {
+        // The element is marked by processor and is not called PAN, so the
+        // processor is the only thing that can have found it. Parsing leaves
+        // the number alone, so --unmask-pan still has something to show.
+        Path config = writeConfigMarkingTheCardNumber();
+        Path masked = directory.resolve("marked-masked.csv");
+        Path plain = directory.resolve("marked-plain.csv");
+
+        assertEquals(0, run("mci-ipm-to-csv", ipmFile.toString(), "-o", masked.toString(),
+                "--config-file", config.toString()));
+        assertEquals(0, run("mci-ipm-to-csv", ipmFile.toString(), "-o", plain.toString(),
+                "--unmask-pan", "--config-file", config.toString()));
+
+        String maskedText = Files.readString(masked);
+        assertTrue(maskedText.contains("444455******7777"), maskedText);
+        assertFalse(maskedText.contains("4444555566667777"), "the full number must not be written");
+        assertTrue(Files.readString(plain).contains("4444555566667777"), "--unmask-pan writes it in full");
+    }
+
+    /** A layout naming the card number something else and marking it by processor. */
+    private Path writeConfigMarkingTheCardNumber() throws IOException {
+        Path config = directory.resolve("layout.json");
+        Files.writeString(config, """
+                {
+                  "bit_config": {
+                    "2": {"field_name": "Card number", "field_type": "LLVAR",
+                          "field_length": 19, "field_processor": "PAN"},
+                    "4": {"field_name": "Amount transaction", "field_type": "FIXED",
+                          "field_length": 12, "field_python_type": "long"},
+                    "12": {"field_name": "Date/Time local transaction", "field_type": "FIXED",
+                           "field_length": 12, "field_python_type": "datetime",
+                           "field_date_format": "%y%m%d%H%M%S"},
+                    "37": {"field_name": "Retrieval reference number", "field_type": "FIXED",
+                           "field_length": 12},
+                    "38": {"field_name": "Approval code", "field_type": "FIXED", "field_length": 6},
+                    "48": {"field_name": "Additional data", "field_type": "LLLVAR",
+                           "field_length": 0, "field_processor": "PDS"}
+                  },
+                  "output_data_elements": ["MTI", "DE2", "DE4", "DE12", "DE37", "DE38"]
+                }
+                """);
+        return config;
+    }
+
+    @Test
     void datesAreWrittenWithSecondsAndASpace() throws IOException {
         Path csv = directory.resolve("dates.csv");
         run("mci-ipm-to-csv", ipmFile.toString(), "-o", csv.toString());

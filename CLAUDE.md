@@ -131,11 +131,11 @@ These caused real bugs or would have. Do not "simplify" them.
 
 ## Deliberate divergences from cardutil
 
-Six, each listed in the README with its reason. Do not close them in the name of
-parity without checking there first — each exists because cardutil's behaviour is
-wrong or unsafe. The one most likely to surprise: `mci-ipm-to-csv` masks card
-numbers unless `--unmask-pan` is passed, while the library itself never masks, so
-files stay round trip safe.
+Seven, each listed in the README with its reason. Do not close them in the name
+of parity without checking there first — each exists because cardutil's behaviour
+is wrong or unsafe. The one most likely to surprise: `mci-ipm-to-csv` masks card
+numbers unless `--unmask-pan` is passed, while the library itself never masks —
+not even for a field the layout marks `PAN` — so files stay round trip safe.
 
 ## Conventions
 
