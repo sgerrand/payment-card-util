@@ -1,6 +1,7 @@
 package com.sgerrand.paymentcardutil.cli;
 
 import com.sgerrand.paymentcardutil.card.Pan;
+import com.sgerrand.paymentcardutil.config.FieldProcessor;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.ipm.IpmInfo;
 import com.sgerrand.paymentcardutil.ipm.IpmReader;
@@ -29,7 +30,14 @@ import java.util.concurrent.Callable;
         mixinStandardHelpOptions = true)
 final class IpmToCsv implements Callable<Integer> {
 
-    /** The data element whose name marks it as holding a card number. */
+    /** The field processors that mark an element as holding a card number. */
+    private static final List<FieldProcessor> PAN_PROCESSORS =
+            List.of(FieldProcessor.PAN, FieldProcessor.PAN_PREFIX);
+
+    /**
+     * The element name that marks a card number in a layout that marks none by
+     * processor. See {@link #panColumns(IsoConfig)}.
+     */
     private static final String PAN_FIELD_NAME = "PAN";
 
     @Parameters(index = "0", paramLabel = "IPM_FILE", description = "The IPM file to read.")
@@ -94,15 +102,36 @@ final class IpmToCsv implements Callable<Integer> {
         };
     }
 
-    /** Columns holding a card number, according to the layout. */
-    private static List<String> panColumns(IsoConfig config) {
-        List<String> columns = new ArrayList<>();
+    /**
+     * Columns holding a card number, according to the layout.
+     *
+     * <p>A layout says which element that is by giving it the {@code PAN} or
+     * {@code PAN-PREFIX} field processor, which is cardutil's own way of
+     * marking one and the only machine readable signal there is. The element's
+     * name is a label meant for people: it can be translated, spelled out in
+     * full, or reused, so it decides nothing while the layout marks anything.
+     *
+     * <p>The built-in Mastercard layout marks nothing, because it is generated
+     * from cardutil's config and cardutil does not mask. So a layout with no
+     * marked element falls back to the name, which is what keeps the default
+     * run masking rather than quietly writing full card numbers.
+     */
+    static List<String> panColumns(IsoConfig config) {
+        List<String> marked = PAN_PROCESSORS.stream()
+                .flatMap(processor -> config.bitsWithProcessor(processor).stream())
+                .sorted()
+                .map(Iso8583Message::deKey)
+                .toList();
+        if (!marked.isEmpty()) {
+            return marked;
+        }
+        List<String> named = new ArrayList<>();
         config.bitConfig().forEach((bit, field) -> {
             if (PAN_FIELD_NAME.equalsIgnoreCase(field.name())) {
-                columns.add(Iso8583Message.deKey(bit));
+                named.add(Iso8583Message.deKey(bit));
             }
         });
-        return columns;
+        return named;
     }
 
     private static Map<String, ?> mask(Map<String, Object> values, List<String> columns) {

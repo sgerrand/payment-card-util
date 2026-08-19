@@ -191,7 +191,10 @@ Everything else matches byte for byte. These do not, and each is deliberate.
 - **`mci-ipm-to-csv` masks card numbers.** cardutil writes them in full. Pass
   `--unmask-pan` for the same output as the Python tool. The library itself does
   not mask: `Iso8583.parse` returns what the file holds, so a file can be read
-  and written back unchanged.
+  and written back unchanged. Which column holds a card number comes from the
+  layout's field processor, `PAN` or `PAN-PREFIX`. The built-in Mastercard
+  layout marks none, since it is generated from cardutil's own config, so a
+  layout that marks nothing falls back to the element named `PAN`.
 - **`IpmInfo.inspect` detects blocking properly.** cardutil only reports blocking
   for files of exactly one or two blocks, so it answers "not blocked" for almost
   every real file.
