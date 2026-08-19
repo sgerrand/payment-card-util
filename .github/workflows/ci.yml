@@ -45,3 +45,26 @@ jobs:
       # The build targets Java 21 whichever version compiles it, so what this
       # matrix checks is that the result still runs on later ones.
       - run: mvn --batch-mode verify
+
+  workflows:
+    name: Lint the workflows
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Pinned to a version and a checksum rather than an action, so what runs
+      # here is the release that was checked, not whatever the tag points at.
+      # actionlint also runs shellcheck over every run: block, which the runners
+      # already have installed.
+      - name: Run actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl --silent --show-error --location --fail --output "$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum --check --strict -
+          tar --extract --gzip --file "$archive" actionlint
+          ./actionlint -color
