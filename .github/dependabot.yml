@@ -31,6 +31,7 @@ updates:
       default-days: 7
     commit-message:
       prefix: build
+      prefix-development: chore
       include: scope
     groups:
       maven:
