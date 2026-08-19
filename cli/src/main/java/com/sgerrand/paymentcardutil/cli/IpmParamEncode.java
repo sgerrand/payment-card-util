@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -29,6 +30,13 @@ final class IpmParamEncode implements Callable<Integer> {
     @Parameters(index = "0", paramLabel = "PARAM_FILE", description = "The parameter file to read.")
     Path inFile;
 
+    @Option(
+            names = "--config-file",
+            description =
+                    "JSON file holding the layout. Records are copied as they stand, so only "
+                            + "the record length limit is read from it.")
+    Path configFile;
+
     @Mixin EncodeOptions options = new EncodeOptions();
 
     @Override
@@ -41,7 +49,7 @@ final class IpmParamEncode implements Callable<Integer> {
         // them. The config still says how long a record may be before the file
         // is called damaged, which is the one thing this command must not
         // decide for itself.
-        IsoConfig config = ConfigFiles.load(null);
+        IsoConfig config = ConfigFiles.load(configFile);
 
         int count = 0;
         try (InputStream in = Files.newInputStream(inFile);

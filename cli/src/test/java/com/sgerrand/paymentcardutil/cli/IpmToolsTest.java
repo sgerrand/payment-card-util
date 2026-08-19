@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sgerrand.paymentcardutil.ipm.IpmReader;
 import com.sgerrand.paymentcardutil.ipm.IpmWriter;
+import com.sgerrand.paymentcardutil.ipm.VbsReader;
+import com.sgerrand.paymentcardutil.ipm.VbsWriter;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
 import java.io.IOException;
@@ -146,6 +148,51 @@ class IpmToolsTest {
                 }
                 """);
         return config;
+    }
+
+    @Test
+    void paramEncodeChangesTheCharacterSet() throws IOException {
+        Path paramFile = writeParamFile();
+        Path encoded = directory.resolve("params.out");
+
+        assertEquals(
+                0, run("mci-ipm-param-encode", paramFile.toString(), "-o", encoded.toString()));
+
+        try (InputStream in = Files.newInputStream(encoded);
+                VbsReader reader = VbsReader.blocked(in)) {
+            assertEquals(
+                    "IP0000T1 FIRST RECORD",
+                    new String(reader.next(), StandardCharsets.ISO_8859_1));
+        }
+    }
+
+    @Test
+    void paramEncodeTakesTheRecordLengthFromTheConfigFile() throws IOException {
+        Path paramFile = writeParamFile();
+        Path config = directory.resolve("short-records.json");
+        Files.writeString(config, "{\"MAX_VBS_RECORD_LENGTH\": 4}");
+
+        assertNotEquals(
+                0,
+                run(
+                        "mci-ipm-param-encode",
+                        paramFile.toString(),
+                        "-o",
+                        directory.resolve("params.out").toString(),
+                        "--config-file",
+                        config.toString()),
+                "a record past the configured limit must stop the copy");
+    }
+
+    /** A small blocked parameter file, written in the cp500 the tools expect. */
+    private Path writeParamFile() throws IOException {
+        Path paramFile = directory.resolve("params.ipm");
+        try (OutputStream out = Files.newOutputStream(paramFile);
+                VbsWriter writer = VbsWriter.blocked(out)) {
+            writer.write("IP0000T1 FIRST RECORD".getBytes(CommonOptions.charset("cp500")));
+            writer.write("IP0000T1 SECOND RECORD".getBytes(CommonOptions.charset("cp500")));
+        }
+        return paramFile;
     }
 
     @Test
