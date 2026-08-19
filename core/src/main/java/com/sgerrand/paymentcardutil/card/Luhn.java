@@ -19,8 +19,30 @@ public final class Luhn {
         if (digits == null || digits.length() < 2) {
             return false;
         }
+        return sum(digits, false) % 10 == 0;
+    }
+
+    /**
+     * Returns the check digit to append to a number that does not yet have one.
+     *
+     * @param digitsWithoutCheckDigit a string of ASCII digits
+     * @throws IllegalArgumentException if the string holds anything but digits
+     */
+    public static int checkDigit(String digitsWithoutCheckDigit) {
+        return (10 - (sum(digitsWithoutCheckDigit, true) % 10)) % 10;
+    }
+
+    /**
+     * The Luhn sum: right to left, every other digit doubled and folded back
+     * under ten.
+     *
+     * @param startDoubling whether the rightmost digit is one of the doubled
+     *                      ones. It is when working out a check digit, and is
+     *                      not when checking a number that already has one
+     */
+    private static int sum(String digits, boolean startDoubling) {
         int sum = 0;
-        boolean doubling = false;
+        boolean doubling = startDoubling;
         for (int i = digits.length() - 1; i >= 0; i--) {
             int digit = digitAt(digits, i);
             if (doubling) {
@@ -32,30 +54,7 @@ public final class Luhn {
             sum += digit;
             doubling = !doubling;
         }
-        return sum % 10 == 0;
-    }
-
-    /**
-     * Returns the check digit to append to a number that does not yet have one.
-     *
-     * @param digitsWithoutCheckDigit a string of ASCII digits
-     * @throws IllegalArgumentException if the string holds anything but digits
-     */
-    public static int checkDigit(String digitsWithoutCheckDigit) {
-        int sum = 0;
-        boolean doubling = true;
-        for (int i = digitsWithoutCheckDigit.length() - 1; i >= 0; i--) {
-            int digit = digitAt(digitsWithoutCheckDigit, i);
-            if (doubling) {
-                digit *= 2;
-                if (digit > 9) {
-                    digit -= 9;
-                }
-            }
-            sum += digit;
-            doubling = !doubling;
-        }
-        return (10 - (sum % 10)) % 10;
+        return sum;
     }
 
     private static int digitAt(String s, int index) {
