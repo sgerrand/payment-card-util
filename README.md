@@ -21,13 +21,17 @@ Requires Java 21.
 The library has no runtime dependencies. Only the command line tools pull
 anything in.
 
+<!-- x-release-please-start-version -->
+
 ```xml
 <dependency>
   <groupId>com.sgerrand</groupId>
   <artifactId>payment-card-util</artifactId>
-  <version>0.1.0</version> <!-- x-release-please-version -->
+  <version>0.1.0</version>
 </dependency>
 ```
+
+<!-- x-release-please-end -->
 
 ## Packages
 
