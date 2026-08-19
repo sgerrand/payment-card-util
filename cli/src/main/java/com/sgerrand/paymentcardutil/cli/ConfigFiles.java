@@ -37,7 +37,9 @@ import java.util.Map;
  * }</pre>
  *
  * <p>Anything the file leaves out keeps its built in value, so a config only has to say what is
- * different.
+ * different. That holds element by element: naming DE 2 changes DE 2 and leaves the other sixty
+ * alone. The one exception is {@code output_data_elements}, which is a column order rather than a
+ * set of parts, so a file naming it replaces the list outright.
  */
 final class ConfigFiles {
 
@@ -86,7 +88,7 @@ final class ConfigFiles {
             builder.maxVbsRecordLength(root.get("MAX_VBS_RECORD_LENGTH").asInt());
         }
         if (root.has("bit_config")) {
-            builder.bitConfig(readBitConfig(root.get("bit_config")));
+            readBitConfig(root.get("bit_config")).forEach(builder::field);
         }
         if (root.has("output_data_elements")) {
             List<String> keys = new ArrayList<>();
@@ -94,7 +96,9 @@ final class ConfigFiles {
             builder.outputDataElements(keys);
         }
         if (root.has("mci_parameter_tables")) {
-            builder.parameterTables(readParameterTables(root.get("mci_parameter_tables")));
+            readParameterTables(root.get("mci_parameter_tables"))
+                    .values()
+                    .forEach(builder::parameterTable);
         }
         return builder.build();
     }

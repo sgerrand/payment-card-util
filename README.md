@@ -184,6 +184,12 @@ java -jar payment-card-util-cli-0.1.0-all.jar mci-ipm-to-csv clearing.ipm \
 The `CARDUTIL_CONFIG` environment variable also works: point it at a directory
 holding `cardutil.json`.
 
+A config file says what is different, not what the whole layout is. Naming one
+data element changes that element and leaves the rest of the built in layout
+alone, and the same goes for a parameter table. The exception is
+`output_data_elements`, a column order rather than a set of parts, so naming it
+replaces the list.
+
 ## Differences from cardutil
 
 Everything else matches byte for byte. These do not, and each is deliberate.
