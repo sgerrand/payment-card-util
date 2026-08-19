@@ -18,18 +18,16 @@ class CardParityTest {
     @TestFactory
     @DisplayName("check digits and masking match cardutil")
     Stream<DynamicTest> matchesCardutil() {
-        return Vectors.cases("card").stream().map(testCase -> DynamicTest.dynamicTest(
-                testCase.get("card_number").asText(),
-                () -> {
-                    String cardNumber = testCase.get("card_number").asText();
-                    String withoutCheckDigit = cardNumber.substring(0, cardNumber.length() - 1);
+        return Vectors.tests("card", testCase -> testCase.get("card_number").asText(), testCase -> {
+            String cardNumber = testCase.get("card_number").asText();
+            String withoutCheckDigit = cardNumber.substring(0, cardNumber.length() - 1);
 
-                    assertEquals(Integer.parseInt(testCase.get("check_digit").asText()),
-                            Luhn.checkDigit(withoutCheckDigit), "check digit");
-                    assertEquals(testCase.get("masked").asText(),
-                            Pan.maskDigits(cardNumber), "masked number");
-                    assertTrue(Luhn.isValid(withoutCheckDigit + Luhn.checkDigit(withoutCheckDigit)),
-                            "a number carrying its own check digit passes");
-                }));
+            assertEquals(Integer.parseInt(testCase.get("check_digit").asText()),
+                    Luhn.checkDigit(withoutCheckDigit), "check digit");
+            assertEquals(testCase.get("masked").asText(),
+                    Pan.maskDigits(cardNumber), "masked number");
+            assertTrue(Luhn.isValid(withoutCheckDigit + Luhn.checkDigit(withoutCheckDigit)),
+                    "a number carrying its own check digit passes");
+        });
     }
 }

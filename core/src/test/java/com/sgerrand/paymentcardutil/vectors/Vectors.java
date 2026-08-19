@@ -15,6 +15,11 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Stream;
+
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.function.ThrowingConsumer;
 
 /**
  * Loads the golden vectors generated from the Python cardutil package.
@@ -45,6 +50,29 @@ public final class Vectors {
             throw new IllegalStateException("No vectors under " + group);
         }
         return cases;
+    }
+
+    /**
+     * One dynamic test per case in a group, named by the case's {@code name}.
+     *
+     * <p>Every parity test is the same shape — walk the cases, name each one,
+     * run an assertion against it — so the shape lives here and each test class
+     * is left holding only its assertion.
+     */
+    public static Stream<DynamicTest> tests(String group, ThrowingConsumer<JsonNode> body) {
+        return tests(group, testCase -> testCase.get("name").asText(), body);
+    }
+
+    /**
+     * One dynamic test per case in a group.
+     *
+     * @param naming what to call each case, for groups whose cases carry no
+     *               {@code name}
+     */
+    public static Stream<DynamicTest> tests(String group, Function<JsonNode, String> naming,
+                                            ThrowingConsumer<JsonNode> body) {
+        return cases(group).stream().map(testCase ->
+                DynamicTest.dynamicTest(naming.apply(testCase), () -> body.accept(testCase)));
     }
 
     /** Rebuilds a tagged map of message values with their Java types. */

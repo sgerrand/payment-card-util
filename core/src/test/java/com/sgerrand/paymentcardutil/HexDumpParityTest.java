@@ -20,13 +20,11 @@ class HexDumpParityTest {
     @TestFactory
     @DisplayName("dumps match cardutil line for line")
     Stream<DynamicTest> matchesCardutil() {
-        return Vectors.cases("hexdump").stream().map(testCase -> DynamicTest.dynamicTest(
-                testCase.get("name").asText(),
-                () -> assertEquals(
+        return Vectors.tests("hexdump", testCase -> assertEquals(
                         testCase.get("dump").asText(),
                         HexDump.format(
                                 Vectors.hex(testCase.get("data_hex").asText()),
-                                Vectors.charset(testCase.get("encoding").asText())))));
+                                Vectors.charset(testCase.get("encoding").asText()))));
     }
 
     @Test

@@ -21,25 +21,23 @@ class KeysParityTest {
     @TestFactory
     @DisplayName("key handling matches cardutil")
     Stream<DynamicTest> matchesCardutil() {
-        return Vectors.cases("keys").stream().map(testCase -> DynamicTest.dynamicTest(
-                components(testCase).size() + " components",
-                () -> {
-                    String[] components = components(testCase).toArray(String[]::new);
-                    String masterKey = testCase.get("master_key").asText();
+        return Vectors.tests("keys", testCase -> components(testCase).size() + " components", testCase -> {
+            String[] components = components(testCase).toArray(String[]::new);
+            String masterKey = testCase.get("master_key").asText();
 
-                    String clear = Keys.zoneMasterKey(components);
-                    assertEquals(testCase.get("clear_key").asText(), clear, "combined key");
-                    assertEquals(testCase.get("kcv").asText(), Keys.keyCheckValue(clear), "check value");
+            String clear = Keys.zoneMasterKey(components);
+            assertEquals(testCase.get("clear_key").asText(), clear, "combined key");
+            assertEquals(testCase.get("kcv").asText(), Keys.keyCheckValue(clear), "check value");
 
-                    Keys.EncryptedKey encrypted = Keys.encryptedZoneMasterKey(masterKey, components);
-                    assertEquals(testCase.get("encrypted_key").asText(),
-                            encrypted.encryptedKey(), "encrypted key");
-                    assertEquals(testCase.get("encrypted_kcv").asText(),
-                            encrypted.keyCheckValue(), "check value of the encrypted key");
+            Keys.EncryptedKey encrypted = Keys.encryptedZoneMasterKey(masterKey, components);
+            assertEquals(testCase.get("encrypted_key").asText(),
+                    encrypted.encryptedKey(), "encrypted key");
+            assertEquals(testCase.get("encrypted_kcv").asText(),
+                    encrypted.keyCheckValue(), "check value of the encrypted key");
 
-                    assertEquals(clear, Keys.decryptKey(encrypted.encryptedKey(), masterKey),
-                            "decrypting gives the key back");
-                }));
+            assertEquals(clear, Keys.decryptKey(encrypted.encryptedKey(), masterKey),
+                    "decrypting gives the key back");
+        });
     }
 
     private static List<String> components(JsonNode testCase) {

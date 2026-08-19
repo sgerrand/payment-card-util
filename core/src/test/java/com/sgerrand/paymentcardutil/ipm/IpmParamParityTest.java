@@ -24,28 +24,26 @@ class IpmParamParityTest {
     @TestFactory
     @DisplayName("parameter rows match cardutil")
     Stream<DynamicTest> matchesCardutil() {
-        return Vectors.cases("param").stream().map(testCase -> DynamicTest.dynamicTest(
-                testCase.get("name").asText(),
-                () -> {
-                    byte[] file = Vectors.hex(testCase.get("file_hex").asText());
-                    List<Map<String, String>> read = new ArrayList<>();
+        return Vectors.tests("param", testCase -> {
+            byte[] file = Vectors.hex(testCase.get("file_hex").asText());
+            List<Map<String, String>> read = new ArrayList<>();
 
-                    try (IpmParamReader reader = IpmParamReader.open(
-                            new ByteArrayInputStream(file),
-                            testCase.get("table_id").asText(),
-                            IpmParamReader.DEFAULT_CHARSET,
-                            testCase.get("blocked").asBoolean(),
-                            testCase.get("expanded").asBoolean(),
-                            IsoConfig.defaults())) {
-                        reader.forEach(record -> read.add(record.asMap()));
-                    }
+            try (IpmParamReader reader = IpmParamReader.open(
+                    new ByteArrayInputStream(file),
+                    testCase.get("table_id").asText(),
+                    IpmParamReader.DEFAULT_CHARSET,
+                    testCase.get("blocked").asBoolean(),
+                    testCase.get("expanded").asBoolean(),
+                    IsoConfig.defaults())) {
+                reader.forEach(record -> read.add(record.asMap()));
+            }
 
-                    JsonNode expected = testCase.get("parsed");
-                    assertEquals(expected.size(), read.size(), "row count");
-                    for (int i = 0; i < expected.size(); i++) {
-                        assertEquals(asMap(expected.get(i)), read.get(i), "row " + (i + 1));
-                    }
-                }));
+            JsonNode expected = testCase.get("parsed");
+            assertEquals(expected.size(), read.size(), "row count");
+            for (int i = 0; i < expected.size(); i++) {
+                assertEquals(asMap(expected.get(i)), read.get(i), "row " + (i + 1));
+            }
+        });
     }
 
     private static Map<String, String> asMap(JsonNode node) {

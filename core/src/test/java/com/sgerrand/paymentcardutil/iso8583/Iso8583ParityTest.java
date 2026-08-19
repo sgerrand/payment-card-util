@@ -22,38 +22,32 @@ class Iso8583ParityTest {
     @TestFactory
     @DisplayName("serializing matches cardutil byte for byte")
     Stream<DynamicTest> serializeMatchesCardutil() {
-        return Vectors.cases("iso8583").stream().map(testCase -> DynamicTest.dynamicTest(
-                testCase.get("name").asText(),
-                () -> {
-                    Iso8583Message message = Iso8583Message.of(Vectors.values(testCase.get("input")));
-                    byte[] actual = Iso8583.serialize(message, options(testCase));
-                    assertEquals(testCase.get("message_hex").asText(), Vectors.hex(actual));
-                }));
+        return Vectors.tests("iso8583", testCase -> {
+            Iso8583Message message = Iso8583Message.of(Vectors.values(testCase.get("input")));
+            byte[] actual = Iso8583.serialize(message, options(testCase));
+            assertEquals(testCase.get("message_hex").asText(), Vectors.hex(actual));
+        });
     }
 
     @TestFactory
     @DisplayName("parsing gives the same values as cardutil")
     Stream<DynamicTest> parseMatchesCardutil() {
-        return Vectors.cases("iso8583").stream().map(testCase -> DynamicTest.dynamicTest(
-                testCase.get("name").asText(),
-                () -> {
-                    byte[] raw = Vectors.hex(testCase.get("message_hex").asText());
-                    Iso8583Message parsed = Iso8583.parse(raw, options(testCase));
-                    Vectors.assertValuesEqual(Vectors.values(testCase.get("parsed")), parsed.values());
-                }));
+        return Vectors.tests("iso8583", testCase -> {
+            byte[] raw = Vectors.hex(testCase.get("message_hex").asText());
+            Iso8583Message parsed = Iso8583.parse(raw, options(testCase));
+            Vectors.assertValuesEqual(Vectors.values(testCase.get("parsed")), parsed.values());
+        });
     }
 
     @TestFactory
     @DisplayName("a parsed message writes back to the same bytes")
     Stream<DynamicTest> roundTrip() {
-        return Vectors.cases("iso8583").stream().map(testCase -> DynamicTest.dynamicTest(
-                testCase.get("name").asText(),
-                () -> {
-                    String expected = testCase.get("message_hex").asText();
-                    Iso8583Options options = options(testCase);
-                    Iso8583Message parsed = Iso8583.parse(Vectors.hex(expected), options);
-                    assertEquals(expected, Vectors.hex(Iso8583.serialize(parsed, options)));
-                }));
+        return Vectors.tests("iso8583", testCase -> {
+            String expected = testCase.get("message_hex").asText();
+            Iso8583Options options = options(testCase);
+            Iso8583Message parsed = Iso8583.parse(Vectors.hex(expected), options);
+            assertEquals(expected, Vectors.hex(Iso8583.serialize(parsed, options)));
+        });
     }
 
     private static Iso8583Options options(JsonNode testCase) {
