@@ -1,5 +1,6 @@
 package com.sgerrand.paymentcardutil.cli;
 
+import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.ipm.VbsReader;
 import com.sgerrand.paymentcardutil.ipm.VbsWriter;
 import picocli.CommandLine.Command;
@@ -37,10 +38,17 @@ final class IpmParamEncode implements Callable<Integer> {
         Charset from = options.inCharset();
         Charset to = options.outCharset();
 
+        // Records are copied as they stand, so no layout is needed to read
+        // them. The config still says how long a record may be before the file
+        // is called damaged, which is the one thing this command must not
+        // decide for itself.
+        IsoConfig config = ConfigFiles.load(null);
+
         int count = 0;
         try (InputStream in = Files.newInputStream(inFile);
              OutputStream stream = Files.newOutputStream(out);
-             VbsReader reader = options.inFormat.blocked() ? VbsReader.blocked(in) : VbsReader.of(in);
+             VbsReader reader = options.inFormat.blocked()
+                     ? VbsReader.blocked(in, config) : VbsReader.of(in, config);
              VbsWriter writer = options.outFormat.blocked() ? VbsWriter.blocked(stream) : VbsWriter.of(stream)) {
             for (byte[] record : reader) {
                 writer.write(new String(record, from).getBytes(to));
