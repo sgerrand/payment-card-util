@@ -82,6 +82,6 @@ public final class UnblockingInputStream extends FilterInputStream {
             available = Blocking.DATA_SIZE;
         }
         position = 0;
-        return position < available;
+        return true;
     }
 }

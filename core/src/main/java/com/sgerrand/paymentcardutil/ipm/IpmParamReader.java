@@ -7,11 +7,12 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 /**
  * Reads one table out of a Mastercard IPM parameter extract file.
@@ -32,7 +33,7 @@ import java.util.NoSuchElementException;
  * table by its short code. Expanded records carry the full table id instead; set
  * {@code expanded} for those.
  */
-public final class IpmParamReader implements Iterable<ParamRecord>, Iterator<ParamRecord>, Closeable {
+public final class IpmParamReader extends LookAheadIterator<ParamRecord> implements Iterable<ParamRecord>, Closeable {
 
     /** Where the index records say which table they describe. */
     private static final int INDEX_KEY_START = 11;
@@ -42,18 +43,26 @@ public final class IpmParamReader implements Iterable<ParamRecord>, Iterator<Par
     private static final int INDEX_SUB_ID_START = 243;
     private static final int INDEX_SUB_ID_END = 246;
 
-    /** Where the common parts sit in a compressed record. */
-    private static final int COMPRESSED_TIMESTAMP_END = 7;
-    private static final int COMPRESSED_ACTIVE_END = 8;
-    private static final int COMPRESSED_SUB_ID_END = 11;
+    /**
+     * Where the parts common to every record sit.
+     *
+     * <p>The two record shapes differ only in these offsets, so the shape is
+     * picked once and read from here rather than branched on at each use.
+     *
+     * @param timestampEnd where the effective timestamp stops
+     * @param activeEnd    where the active/inactive code stops
+     * @param tableEnd     where the table name stops: the full table id in an
+     *                     expanded record, the three character code in a
+     *                     compressed one
+     * @param fieldOffset  how far the config's field positions have to shift.
+     *                     Compressed records leave out the 8 character table id
+     *                     the config counts from
+     */
+    private record Shape(int timestampEnd, int activeEnd, int tableEnd, int fieldOffset) {
 
-    /** Where the common parts sit in an expanded record. */
-    private static final int EXPANDED_TIMESTAMP_END = 10;
-    private static final int EXPANDED_ACTIVE_END = 11;
-    private static final int EXPANDED_TABLE_ID_END = 19;
-
-    /** Compressed records leave out the 8 character table id the config counts from. */
-    private static final int COMPRESSED_FIELD_OFFSET = -8;
+        static final Shape COMPRESSED = new Shape(7, 8, 11, -8);
+        static final Shape EXPANDED = new Shape(10, 11, 19, 0);
+    }
 
     private static final String INDEX_TABLE = "IP0000T1";
     private static final String TRAILER_PREFIX = "TRAILER RECORD IP0000T1";
@@ -65,17 +74,16 @@ public final class IpmParamReader implements Iterable<ParamRecord>, Iterator<Par
     private final String tableId;
     private final Charset charset;
     private final boolean expanded;
+    private final Shape shape;
     private final ParamTable table;
     private final Map<String, String> tableIndex = new HashMap<>();
-
-    private ParamRecord pending;
-    private boolean exhausted;
 
     private IpmParamReader(VbsReader records, String tableId, Charset charset, boolean expanded, IsoConfig config) {
         this.records = records;
         this.tableId = tableId;
         this.charset = charset;
         this.expanded = expanded;
+        this.shape = expanded ? Shape.EXPANDED : Shape.COMPRESSED;
         this.table = config.parameterTable(tableId).orElseThrow(() -> new IpmDataException(
                 "No layout configured for parameter table " + tableId));
         readIndex();
@@ -116,9 +124,8 @@ public final class IpmParamReader implements Iterable<ParamRecord>, Iterator<Par
      * The column names this table's rows carry, in order: the row details first,
      * then the table's own fields.
      */
-    public java.util.List<String> columnNames() {
-        java.util.List<String> names = new java.util.ArrayList<>(
-                java.util.List.of("table_id", "effective_timestamp", "active_inactive_code"));
+    public List<String> columnNames() {
+        List<String> names = new ArrayList<>(ParamRecord.DETAIL_COLUMNS);
         names.addAll(table.fields().keySet());
         return names;
     }
@@ -129,29 +136,8 @@ public final class IpmParamReader implements Iterable<ParamRecord>, Iterator<Par
     }
 
     @Override
-    public boolean hasNext() {
-        if (pending != null) {
-            return true;
-        }
-        if (exhausted) {
-            return false;
-        }
-        pending = readNextMatching();
-        if (pending == null) {
-            exhausted = true;
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public ParamRecord next() {
-        if (!hasNext()) {
-            throw new NoSuchElementException("No more rows in " + tableId);
-        }
-        ParamRecord record = pending;
-        pending = null;
-        return record;
+    String endMessage() {
+        return "No more rows in " + tableId;
     }
 
     @Override
@@ -186,7 +172,8 @@ public final class IpmParamReader implements Iterable<ParamRecord>, Iterator<Par
     }
 
     /** @return the next row belonging to the wanted table, or {@code null} at the end */
-    private ParamRecord readNextMatching() {
+    @Override
+    ParamRecord readNext() {
         while (records.hasNext()) {
             String record = new String(records.next(), charset);
             String recordTableId = tableIdOf(record);
@@ -195,24 +182,22 @@ public final class IpmParamReader implements Iterable<ParamRecord>, Iterator<Par
             }
             return new ParamRecord(
                     recordTableId,
-                    expanded ? between(record, 0, EXPANDED_TIMESTAMP_END)
-                             : between(record, 0, COMPRESSED_TIMESTAMP_END),
-                    expanded ? between(record, EXPANDED_TIMESTAMP_END, EXPANDED_ACTIVE_END)
-                             : between(record, COMPRESSED_TIMESTAMP_END, COMPRESSED_ACTIVE_END),
+                    between(record, 0, shape.timestampEnd()),
+                    between(record, shape.timestampEnd(), shape.activeEnd()),
                     readFields(record));
         }
         return null;
     }
 
     private String tableIdOf(String record) {
-        if (expanded) {
-            return between(record, EXPANDED_ACTIVE_END, EXPANDED_TABLE_ID_END);
-        }
-        return tableIndex.get(between(record, COMPRESSED_ACTIVE_END, COMPRESSED_SUB_ID_END));
+        String name = between(record, shape.activeEnd(), shape.tableEnd());
+        // An expanded record names its table outright; a compressed one gives
+        // the three character code the file's index translates.
+        return expanded ? name : tableIndex.get(name);
     }
 
     private Map<String, String> readFields(String record) {
-        int offset = expanded ? 0 : COMPRESSED_FIELD_OFFSET;
+        int offset = shape.fieldOffset();
         Map<String, String> fields = new LinkedHashMap<>();
         table.fields().forEach((name, position) ->
                 fields.put(name, between(record, position.start() + offset, position.end() + offset)));

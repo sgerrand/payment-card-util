@@ -2,6 +2,7 @@ package com.sgerrand.paymentcardutil.ipm;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,6 +20,13 @@ public record ParamRecord(
         String effectiveTimestamp,
         String activeInactiveCode,
         Map<String, String> fields) {
+
+    /**
+     * The column names for the row's own details, ahead of the table's fields.
+     * Kept here so the CSV header {@link IpmParamReader#columnNames()} builds
+     * and the rows {@link #asMap()} builds cannot drift apart.
+     */
+    static final List<String> DETAIL_COLUMNS = List.of("table_id", "effective_timestamp", "active_inactive_code");
 
     public ParamRecord {
         Objects.requireNonNull(tableId, "tableId");
@@ -38,9 +46,9 @@ public record ParamRecord(
      */
     public Map<String, String> asMap() {
         Map<String, String> all = new LinkedHashMap<>();
-        all.put("table_id", tableId);
-        all.put("effective_timestamp", effectiveTimestamp);
-        all.put("active_inactive_code", activeInactiveCode);
+        all.put(DETAIL_COLUMNS.get(0), tableId);
+        all.put(DETAIL_COLUMNS.get(1), effectiveTimestamp);
+        all.put(DETAIL_COLUMNS.get(2), activeInactiveCode);
         all.putAll(fields);
         return all;
     }

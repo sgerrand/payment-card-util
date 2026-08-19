@@ -111,9 +111,7 @@ public record IpmInfo(boolean valid, String reason, boolean blocked, Encoding en
             return invalid("File is too short to be an IPM file");
         }
 
-        long recordLength = Integer.toUnsignedLong(
-                ((sample[0] & 0xFF) << 24) | ((sample[1] & 0xFF) << 16)
-                        | ((sample[2] & 0xFF) << 8) | (sample[3] & 0xFF));
+        long recordLength = Vbs.recordLength(sample, 0);
         if (recordLength > config.maxVbsRecordLength()) {
             return invalid("First record says it is " + recordLength + " bytes, past the "
                     + config.maxVbsRecordLength() + " byte limit, which usually means the file is damaged");

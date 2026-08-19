@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 /**
  * Reads the records out of a variable blocked (VBS) file.
@@ -23,17 +22,14 @@ import java.util.NoSuchElementException;
  * }
  * }</pre>
  */
-public final class VbsReader implements Iterable<byte[]>, Iterator<byte[]>, Closeable {
-
-    private static final int LENGTH_PREFIX = 4;
+public final class VbsReader extends LookAheadIterator<byte[]> implements Iterable<byte[]>, Closeable {
 
     private final InputStream in;
     private final int maxRecordLength;
 
-    private byte[] pending;
-    private boolean exhausted;
     private int recordNumber;
-    private byte[] lastRecord;
+    private byte[] lastLengthBytes;
+    private byte[] lastRecordBody;
 
     private VbsReader(InputStream in, int maxRecordLength) {
         this.in = in;
@@ -72,7 +68,10 @@ public final class VbsReader implements Iterable<byte[]>, Iterator<byte[]>, Clos
      * for reporting a bad record back to whoever sent the file.
      */
     public byte[] lastRecord() {
-        return lastRecord == null ? null : lastRecord.clone();
+        // Joined only when someone asks, which is on the error path. Keeping a
+        // second copy of every record just in case would double the reader's
+        // memory traffic for a file that reads cleanly.
+        return lastRecordBody == null ? null : Vbs.withPrefix(lastLengthBytes, lastRecordBody);
     }
 
     @Override
@@ -81,29 +80,8 @@ public final class VbsReader implements Iterable<byte[]>, Iterator<byte[]>, Clos
     }
 
     @Override
-    public boolean hasNext() {
-        if (pending != null) {
-            return true;
-        }
-        if (exhausted) {
-            return false;
-        }
-        pending = readRecord();
-        if (pending == null) {
-            exhausted = true;
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public byte[] next() {
-        if (!hasNext()) {
-            throw new NoSuchElementException("No more records");
-        }
-        byte[] record = pending;
-        pending = null;
-        return record;
+    String endMessage() {
+        return "No more records";
     }
 
     @Override
@@ -116,20 +94,17 @@ public final class VbsReader implements Iterable<byte[]>, Iterator<byte[]>, Clos
      * @throws IpmDataException  if the framing does not add up
      * @throws UncheckedIOException if the stream fails
      */
-    private byte[] readRecord() {
+    @Override
+    byte[] readNext() {
         try {
-            byte[] lengthBytes = in.readNBytes(LENGTH_PREFIX);
-            if (lengthBytes.length < LENGTH_PREFIX) {
+            byte[] lengthBytes = in.readNBytes(Vbs.LENGTH_PREFIX);
+            if (lengthBytes.length < Vbs.LENGTH_PREFIX) {
                 // A file whose writer never wrote the zero length end marker.
                 // cardutil accepts this and stops, so this does too.
                 return null;
             }
 
-            long length = Integer.toUnsignedLong(
-                    ((lengthBytes[0] & 0xFF) << 24)
-                            | ((lengthBytes[1] & 0xFF) << 16)
-                            | ((lengthBytes[2] & 0xFF) << 8)
-                            | (lengthBytes[3] & 0xFF));
+            long length = Vbs.recordLength(lengthBytes, 0);
 
             if (length > maxRecordLength) {
                 throw new IpmDataException(
@@ -143,18 +118,15 @@ public final class VbsReader implements Iterable<byte[]>, Iterator<byte[]>, Clos
 
             byte[] record = in.readNBytes((int) length);
             if (record.length != length) {
-                byte[] context = new byte[lengthBytes.length + record.length];
-                System.arraycopy(lengthBytes, 0, context, 0, lengthBytes.length);
-                System.arraycopy(record, 0, context, lengthBytes.length, record.length);
+                byte[] context = Vbs.withPrefix(lengthBytes, record);
                 throw new IpmDataException(
                         "Record says it is " + length + " bytes, but only " + record.length + " could be read",
                         context, recordNumber + 1, null);
             }
 
             recordNumber++;
-            lastRecord = new byte[lengthBytes.length + record.length];
-            System.arraycopy(lengthBytes, 0, lastRecord, 0, lengthBytes.length);
-            System.arraycopy(record, 0, lastRecord, lengthBytes.length, record.length);
+            lastLengthBytes = lengthBytes;
+            lastRecordBody = record;
             return record;
         } catch (IOException e) {
             throw new UncheckedIOException(e);

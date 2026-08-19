@@ -20,12 +20,12 @@ import java.io.OutputStream;
  * <p>A file whose writer was never closed has no end marker. Readers here cope
  * with that, but other systems may not.
  */
-public class VbsWriter implements Closeable {
+public final class VbsWriter implements Closeable {
 
     private final OutputStream out;
     private final BlockingOutputStream blocking;
 
-    protected VbsWriter(OutputStream out, boolean blocked) {
+    private VbsWriter(OutputStream out, boolean blocked) {
         if (blocked) {
             this.blocking = new BlockingOutputStream(out);
             this.out = this.blocking;
@@ -47,11 +47,7 @@ public class VbsWriter implements Closeable {
 
     /** Adds a record to the file. */
     public void write(byte[] record) throws IOException {
-        out.write(new byte[] {
-                (byte) (record.length >>> 24),
-                (byte) (record.length >>> 16),
-                (byte) (record.length >>> 8),
-                (byte) record.length});
+        out.write(Vbs.lengthPrefix(record.length));
         out.write(record);
     }
 
