@@ -19,6 +19,8 @@ import java.util.Optional;
  */
 public class PaymentCardException extends RuntimeException {
 
+    private static final HexFormat HEX = HexFormat.of();
+
     private static final long serialVersionUID = 1L;
 
     /** How many bytes of context to show in {@link #contextHex()}. */
@@ -61,6 +63,6 @@ public class PaymentCardException extends RuntimeException {
      */
     public Optional<String> contextHex() {
         return binaryContext()
-                .map(bytes -> HexFormat.of().formatHex(bytes, 0, Math.min(bytes.length, CONTEXT_LIMIT)));
+                .map(bytes -> HEX.formatHex(bytes, 0, Math.min(bytes.length, CONTEXT_LIMIT)));
     }
 }

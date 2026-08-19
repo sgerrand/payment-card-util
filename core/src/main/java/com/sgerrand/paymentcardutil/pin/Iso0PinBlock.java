@@ -27,6 +27,8 @@ import java.util.HexFormat;
  */
 public final class Iso0PinBlock implements PinBlock {
 
+    private static final HexFormat HEX = HexFormat.of();
+
     private static final int BLOCK_BYTES = 8;
     private static final char FILLER = 'f';
 
@@ -53,7 +55,7 @@ public final class Iso0PinBlock implements PinBlock {
             throw new IllegalArgumentException(
                     "A format 0 pin block is " + BLOCK_BYTES + " bytes, was " + block.length);
         }
-        String p1 = xorHex(HexFormat.of().formatHex(block), pinPad(cardNumber));
+        String p1 = xorHex(HEX.formatHex(block), pinPad(cardNumber));
         int pinLength = Character.digit(p1.charAt(1), 16);
         if (pinLength < Pins.MIN_PIN_LENGTH || pinLength > Pins.MAX_PIN_LENGTH) {
             throw new IllegalArgumentException(
@@ -70,7 +72,7 @@ public final class Iso0PinBlock implements PinBlock {
      * @param key            the pin protection key, as hex
      */
     public static Iso0PinBlock fromEncryptedBytes(byte[] encryptedBlock, String cardNumber, String key) {
-        return fromBytes(DesKeys.tripleDesDecrypt(HexFormat.of().parseHex(key), encryptedBlock), cardNumber);
+        return fromBytes(DesKeys.tripleDesDecrypt(HEX.parseHex(key), encryptedBlock), cardNumber);
     }
 
     @Override
@@ -86,12 +88,12 @@ public final class Iso0PinBlock implements PinBlock {
     @Override
     public byte[] toBytes() {
         String p1 = padRight("0" + Integer.toHexString(pin.length()) + pin);
-        return HexFormat.of().parseHex(xorHex(p1, pinPad(cardNumber)));
+        return HEX.parseHex(xorHex(p1, pinPad(cardNumber)));
     }
 
     @Override
     public byte[] toEncryptedBytes(String key) {
-        return DesKeys.tripleDesEncrypt(HexFormat.of().parseHex(key), toBytes());
+        return DesKeys.tripleDesEncrypt(HEX.parseHex(key), toBytes());
     }
 
     /**

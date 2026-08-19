@@ -17,6 +17,8 @@ import java.util.HexFormat;
  */
 public final class VisaPvv {
 
+    private static final HexFormat HEX = HexFormat.of();
+
     /** The key index used when none is given. */
     public static final int DEFAULT_KEY_INDEX = 1;
 
@@ -60,8 +62,8 @@ public final class VisaPvv {
         }
 
         String block = Pins.rightmostBeforeCheckDigit(cardNumber, CARD_DIGITS) + keyIndex + pin;
-        byte[] encrypted = DesKeys.tripleDesEncrypt(HexFormat.of().parseHex(pvvKey), HexFormat.of().parseHex(block));
-        return decimalise(HexFormat.of().formatHex(encrypted));
+        byte[] encrypted = DesKeys.tripleDesEncrypt(HEX.parseHex(pvvKey), HEX.parseHex(block));
+        return decimalise(HEX.formatHex(encrypted));
     }
 
     /**

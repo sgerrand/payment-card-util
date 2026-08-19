@@ -29,6 +29,8 @@ import java.util.HexFormat;
  */
 public final class Iso4PinBlock implements PinBlock {
 
+    private static final HexFormat HEX = HexFormat.of();
+
     private static final int BLOCK_BYTES = 16;
 
     /** Hex characters in the half of the block that holds the pin. */
@@ -72,7 +74,7 @@ public final class Iso4PinBlock implements PinBlock {
             throw new IllegalArgumentException(
                     "A format 4 pin block is " + BLOCK_BYTES + " bytes, was " + block.length);
         }
-        String hex = HexFormat.of().formatHex(block);
+        String hex = HEX.formatHex(block);
         int pinLength = Character.digit(hex.charAt(1), 16);
         if (pinLength < Pins.MIN_PIN_LENGTH || pinLength > Pins.MAX_PIN_LENGTH) {
             throw new IllegalArgumentException(
@@ -90,7 +92,7 @@ public final class Iso4PinBlock implements PinBlock {
      * @param key            the pin protection key, as hex
      */
     public static Iso4PinBlock fromEncryptedBytes(byte[] encryptedBlock, String key) {
-        return fromBytes(DesKeys.aesDecrypt(HexFormat.of().parseHex(key), encryptedBlock));
+        return fromBytes(DesKeys.aesDecrypt(HEX.parseHex(key), encryptedBlock));
     }
 
     @Override
@@ -107,12 +109,12 @@ public final class Iso4PinBlock implements PinBlock {
     public byte[] toBytes() {
         String head = "4" + Integer.toHexString(pin.length()) + pin;
         String padded = head + String.valueOf(FILLER).repeat(PIN_HALF_HEX - head.length());
-        return HexFormat.of().parseHex(padded + HexFormat.of().formatHex(randomValue));
+        return HEX.parseHex(padded + HEX.formatHex(randomValue));
     }
 
     @Override
     public byte[] toEncryptedBytes(String key) {
-        return DesKeys.aesEncrypt(HexFormat.of().parseHex(key), toBytes());
+        return DesKeys.aesEncrypt(HEX.parseHex(key), toBytes());
     }
 
     /**
