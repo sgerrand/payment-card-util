@@ -266,6 +266,11 @@ Formatting is google-java-format in its four space form, applied by Spotless.
 The generated `DefaultConfig.java` is left alone, since its generator decides
 how it looks.
 
+SpotBugs runs over the compiled classes in the same build, at its highest effort
+and lowest reporting threshold. What it is told to ignore lives in
+`config/spotbugs-exclude.xml`, each entry with a reason; nothing is waved
+through without one.
+
 ## Releasing
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please).

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter xmlns="https://github.com/spotbugs/filter/3.1.0">
+
+  <!-- Written by tools/gen_config.py, so its shape is the generator's business. -->
+  <Match>
+    <Class name="com.sgerrand.paymentcardutil.config.DefaultConfig"/>
+  </Match>
+
+  <!--
+    readNext returns null to mean there are no more records, which is the
+    contract of LookAheadIterator.readNext for every reader that extends it.
+    A zero length array cannot stand in: the iterator would read it as a record
+    and never stop. It would also be a poor choice of sentinel here, since a
+    zero length record is exactly what marks the end of a VBS file.
+  -->
+  <Match>
+    <Class name="com.sgerrand.paymentcardutil.ipm.VbsReader"/>
+    <Method name="readNext"/>
+    <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS"/>
+  </Match>
+
+  <!--
+    picocli builds its command tree from an annotated object, so CommandLine has
+    to be handed an instance. The class holding the subcommands has nothing but
+    main and nested types of its own, which is what SpotBugs is objecting to,
+    but there is no way to use the library without instantiating it.
+  -->
+  <Match>
+    <Bug pattern="ISC_INSTANTIATE_STATIC_CLASS"/>
+    <Or>
+      <Class name="com.sgerrand.paymentcardutil.cli.Cardutil"/>
+      <Class name="com.sgerrand.paymentcardutil.cli.IpmToolsTest"/>
+    </Or>
+  </Match>
+</FindBugsFilter>
