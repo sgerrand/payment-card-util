@@ -19,3 +19,6 @@ target/
 # Test data that may hold real card numbers
 /testdata/
 *.ipm
+
+# Written by maven-shade-plugin on every package; not source.
+dependency-reduced-pom.xml
