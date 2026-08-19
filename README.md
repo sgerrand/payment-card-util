@@ -305,6 +305,29 @@ Test data in this repository uses published test card numbers only. Never commit
 a real card number, and never log a full PAN. `.gitignore` blocks `*.ipm` and
 `testdata/` so a real file cannot be committed by accident.
 
+### Why the cryptography looks wrong
+
+Scanners flag `DesKeys`, and they are right about the algorithms: Triple DES is
+old, and ECB is a poor way to encrypt anything of any length. Both are here on
+purpose.
+
+Pin blocks and payment keys are defined in terms of these algorithms. ISO 9564
+format 0 blocks are encrypted with Triple DES, format 4 blocks with AES, key
+check values are a block of zeroes encrypted under the key, and a Visa PVV is
+the first four digits of a Triple DES result. A library that used AES-GCM
+instead would produce values no payment system would accept, and would fail
+every parity test against cardutil.
+
+ECB's usual weakness is that identical plaintext blocks give identical
+ciphertext, which leaks the shape of a long message. Everything here encrypts a
+single fixed size block: an eight or sixteen byte pin block, or a key. There is
+no second block for a pattern to show up in.
+
+So `com.sgerrand.paymentcardutil.crypto` is not a general purpose encryption
+toolkit, and should not be borrowed as one. Two CodeQL alerts covering these
+lines are dismissed as "won't fix" for the reasons above; if a scanner reports
+them again, this is the answer.
+
 ## Licence
 
 BSD 2-Clause. See [LICENSE](LICENSE).
