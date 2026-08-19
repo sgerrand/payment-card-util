@@ -2,6 +2,8 @@ package com.sgerrand.paymentcardutil;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Lays bytes out as a hex dump, for working out why a file will not read.
@@ -35,6 +37,17 @@ public final class HexDump {
 
     /** Stands in for anything that would not show up as a character. */
     private static final char UNPRINTABLE = '.';
+
+    private static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
+
+    /**
+     * The text column, worked out once per character set.
+     *
+     * <p>A byte always reads as the same character, so a 256 entry table beats
+     * decoding one byte at a time: a 6000 byte record dump would otherwise
+     * allocate an array and a string per byte.
+     */
+    private static final Map<Charset, char[]> READABLE = new ConcurrentHashMap<>();
 
     private HexDump() {
     }
@@ -84,7 +97,11 @@ public final class HexDump {
     }
 
     private static void appendLine(StringBuilder out, byte[] data, int from, int to, Charset charset) {
-        out.append("%08X: ".formatted(from));
+        appendHex(out, from >>> 24);
+        appendHex(out, from >>> 16);
+        appendHex(out, from >>> 8);
+        appendHex(out, from);
+        out.append(": ");
 
         int width = 0;
         for (int i = from; i < to; i++) {
@@ -96,14 +113,29 @@ public final class HexDump {
                 out.append(' ');
                 width++;
             }
-            out.append("%02X".formatted(data[i]));
+            appendHex(out, data[i]);
             width += 2;
         }
         out.append(" ".repeat(HEX_WIDTH - width)).append(COLUMN_GAP);
 
+        char[] readable = READABLE.computeIfAbsent(charset, HexDump::readableTable);
         for (int i = from; i < to; i++) {
-            out.append(readable(data[i], charset));
+            out.append(readable[data[i] & 0xFF]);
         }
+    }
+
+    /** Two hex digits of the low byte of {@code value}. */
+    private static void appendHex(StringBuilder out, int value) {
+        out.append(HEX_DIGITS[(value >>> 4) & 0xF]).append(HEX_DIGITS[value & 0xF]);
+    }
+
+    /** How every byte value reads in one character set. */
+    private static char[] readableTable(Charset charset) {
+        char[] table = new char[256];
+        for (int value = 0; value < table.length; value++) {
+            table[value] = readable((byte) value, charset);
+        }
+        return table;
     }
 
     /**
