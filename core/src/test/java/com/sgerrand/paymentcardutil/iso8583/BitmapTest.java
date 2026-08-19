@@ -37,36 +37,38 @@ class BitmapTest {
     }
 
     @Test
-    void readsAPrimaryOnlyBitmap() {
-        byte[] source = {0x60, 0, 0, 0, 0, 0, 0, 0};
-        Bitmap bitmap = Bitmap.read(source, 0);
+    void wrapsAPrimaryOnlyBitmap() {
+        Bitmap bitmap = Bitmap.of(new byte[] {0x60, 0, 0, 0, 0, 0, 0, 0});
         assertEquals(8, bitmap.lengthInBytes());
         assertArrayEquals(new int[] {2, 3}, bitmap.fields());
     }
 
     @Test
-    void readsASecondaryBitmapWhenBitOneIsSet() {
+    void wrapsABitmapCarryingBothHalves() {
         byte[] source = new byte[16];
         source[0] = (byte) 0x80;
         source[8] = 0x40;
-        Bitmap bitmap = Bitmap.read(source, 0);
+
+        Bitmap bitmap = Bitmap.of(source);
         assertEquals(16, bitmap.lengthInBytes());
         assertArrayEquals(new int[] {1, 66}, bitmap.fields());
     }
 
     @Test
-    void readsFromAnOffset() {
-        byte[] source = new byte[10];
-        source[2] = 0x40;
-        assertArrayEquals(new int[] {2}, Bitmap.read(source, 2).fields());
+    void theLengthComesFromTheBytesNotFromBitOne() {
+        // Bit 1 set but only the primary half handed over: an IPM record does
+        // the opposite, carrying both halves with bit 1 clear, so sizing the
+        // bitmap by that bit would misread either one.
+        byte[] bitOneSet = new byte[8];
+        bitOneSet[0] = (byte) 0x80;
+
+        assertEquals(8, Bitmap.of(bitOneSet).lengthInBytes());
     }
 
     @Test
-    void rejectsASourceThatIsTooShort() {
-        assertThrows(IllegalArgumentException.class, () -> Bitmap.read(new byte[4], 0));
-        byte[] truncatedSecondary = new byte[8];
-        truncatedSecondary[0] = (byte) 0x80;
-        assertThrows(IllegalArgumentException.class, () -> Bitmap.read(truncatedSecondary, 0));
+    void rejectsBytesThatAreNotAWholeBitmap() {
+        assertThrows(IllegalArgumentException.class, () -> Bitmap.of(new byte[4]));
+        assertThrows(IllegalArgumentException.class, () -> Bitmap.of(new byte[12]));
     }
 
     @Test

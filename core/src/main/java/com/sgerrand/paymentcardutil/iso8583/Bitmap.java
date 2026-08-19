@@ -34,9 +34,10 @@ public final class Bitmap {
     /**
      * Wraps bytes that are already known to be a whole bitmap.
      *
-     * <p>Unlike {@link #read}, this does not look at bit 1 to decide how long
-     * the bitmap is. ISO 8583 messages in IPM files always carry both halves,
-     * whether or not bit 1 says so.
+     * <p>How long the bitmap is comes from how many bytes are handed over, not
+     * from bit 1. ISO 8583 messages in IPM files always carry both halves,
+     * whether or not bit 1 says so, so a reader that sized the bitmap by that
+     * bit would misread the whole record.
      *
      * @param bytes 8 or 16 bytes
      * @throws IllegalArgumentException if the length is neither
@@ -47,24 +48,6 @@ public final class Bitmap {
                     "A bitmap is 8 or 16 bytes, was " + bytes.length);
         }
         return new Bitmap(bytes.clone());
-    }
-
-    /**
-     * Reads a bitmap from {@code source}, starting at {@code offset}. Reads 8
-     * or 16 bytes depending on whether bit 1 is set.
-     *
-     * @throws IllegalArgumentException if {@code source} is too short
-     */
-    public static Bitmap read(byte[] source, int offset) {
-        if (source.length - offset < PRIMARY_BYTES) {
-            throw new IllegalArgumentException("Not enough bytes for a primary bitmap");
-        }
-        boolean hasSecondary = (source[offset] & 0x80) != 0;
-        int length = hasSecondary ? PRIMARY_BYTES + SECONDARY_BYTES : PRIMARY_BYTES;
-        if (source.length - offset < length) {
-            throw new IllegalArgumentException("Not enough bytes for a secondary bitmap");
-        }
-        return new Bitmap(Arrays.copyOfRange(source, offset, offset + length));
     }
 
     /** How many bytes this bitmap takes up in a message: 8 or 16. */

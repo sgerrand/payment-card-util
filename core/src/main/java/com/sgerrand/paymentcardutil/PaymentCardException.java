@@ -1,6 +1,5 @@
 package com.sgerrand.paymentcardutil;
 
-import java.util.HexFormat;
 import java.util.Optional;
 
 /**
@@ -19,12 +18,7 @@ import java.util.Optional;
  */
 public class PaymentCardException extends RuntimeException {
 
-    private static final HexFormat HEX = HexFormat.of();
-
     private static final long serialVersionUID = 1L;
-
-    /** How many bytes of context to show in {@link #contextHex()}. */
-    private static final int CONTEXT_LIMIT = 64;
 
     private final byte[] binaryContext;
     private final Integer recordNumber;
@@ -53,16 +47,4 @@ public class PaymentCardException extends RuntimeException {
         return Optional.ofNullable(recordNumber);
     }
 
-    /**
-     * The first {@value #CONTEXT_LIMIT} bytes of context as hex, for a log line
-     * that has room for only one.
-     *
-     * <p>For something readable, pass {@link #binaryContext()} to
-     * {@link HexDump#format(byte[], java.nio.charset.Charset, int)} along with
-     * the character set the file was being read in.
-     */
-    public Optional<String> contextHex() {
-        return binaryContext()
-                .map(bytes -> HEX.formatHex(bytes, 0, Math.min(bytes.length, CONTEXT_LIMIT)));
-    }
 }
