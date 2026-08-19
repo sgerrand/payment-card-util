@@ -21,7 +21,7 @@ import picocli.CommandLine.Parameters;
         name = "mci-csv-to-ipm",
         description = "Build a Mastercard IPM file from CSV.",
         mixinStandardHelpOptions = true)
-final class CsvToIpm implements Callable<Integer> {
+final class CsvToIpm implements Callable<Integer>, FileCommand {
 
     @Parameters(index = "0", paramLabel = "CSV_FILE", description = "The CSV file to read.")
     Path inFile;
@@ -57,5 +57,15 @@ final class CsvToIpm implements Callable<Integer> {
         }
         System.out.println("Wrote " + rows.size() + " messages to " + out);
         return 0;
+    }
+
+    @Override
+    public Path inputFile() {
+        return inFile;
+    }
+
+    @Override
+    public InputOptions inputOptions() {
+        return common;
     }
 }

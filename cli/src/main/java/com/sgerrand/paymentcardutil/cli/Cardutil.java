@@ -2,9 +2,13 @@ package com.sgerrand.paymentcardutil.cli;
 
 import com.sgerrand.paymentcardutil.HexDump;
 import com.sgerrand.paymentcardutil.PaymentCardException;
+import com.sgerrand.paymentcardutil.ipm.IpmInfo;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.Optional;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -38,10 +42,12 @@ public final class Cardutil {
     Cardutil() {}
 
     public static void main(String[] args) {
-        System.exit(
-                new CommandLine(new Cardutil())
-                        .setExecutionExceptionHandler(new ErrorHandler())
-                        .execute(args));
+        System.exit(commandLine().execute(args));
+    }
+
+    /** The front end, wired up to report a data problem plainly. */
+    static CommandLine commandLine() {
+        return new CommandLine(new Cardutil()).setExecutionExceptionHandler(new ErrorHandler());
     }
 
     /** Reports the version stamped into the jar. */
@@ -60,6 +66,10 @@ public final class Cardutil {
      * Turns a data problem into a short message, a hex dump of the bytes that caused it, and a
      * failure code, rather than a stack trace nobody asked for. {@code --debug} brings the trace
      * back.
+     *
+     * <p>Where the command was reading an IPM file, it also says what the file looks like. Most
+     * failures are a file read in the wrong character set or the wrong blocking, and those two
+     * lines usually name the mistake outright.
      */
     static final class ErrorHandler implements CommandLine.IExecutionExceptionHandler {
 
@@ -73,6 +83,12 @@ public final class Cardutil {
         public int handleExecutionException(
                 Exception exception, CommandLine command, CommandLine.ParseResult parseResult) {
             PrintWriter err = command.getErr();
+            Optional<FileCommand> fileCommand = fileCommand(parseResult);
+            Charset charset =
+                    fileCommand
+                            .map(reader -> reader.inputOptions().inCharset())
+                            .orElse(Iso8583Options.DEFAULT_CHARSET);
+
             err.println("Processing stopped: " + exception.getMessage());
 
             if (exception instanceof PaymentCardException problem) {
@@ -82,17 +98,15 @@ public final class Cardutil {
                 problem.binaryContext()
                         .ifPresent(
                                 bytes -> {
-                                    err.println(
-                                            "Bytes at that point, read as "
-                                                    + inputCharset(parseResult)
-                                                    + ":");
-                                    err.println(
-                                            HexDump.format(
-                                                    bytes, inputCharset(parseResult), DUMP_LIMIT));
+                                    err.println("Bytes at that point, read as " + charset + ":");
+                                    err.println(HexDump.format(bytes, charset, DUMP_LIMIT));
                                 });
+                fileCommand
+                        .filter(FileCommand::readsIpmMessages)
+                        .ifPresent(reader -> describeFile(err, reader));
             }
 
-            if (isDebug(parseResult)) {
+            if (fileCommand.map(reader -> reader.inputOptions().debug()).orElse(false)) {
                 exception.printStackTrace(err);
             } else {
                 err.println("Run again with --debug for the full details.");
@@ -101,31 +115,59 @@ public final class Cardutil {
         }
 
         /**
-         * The character set the tool was reading with, so the text column of the dump is worth
-         * reading. An EBCDIC record shown as Latin-1 is noise.
+         * Says what could be worked out about the file, which is usually enough to explain why
+         * reading it failed.
          */
-        private static Charset inputCharset(CommandLine.ParseResult parseResult) {
-            return ErrorHandler.<String>optionValue(parseResult, "--in-encoding")
-                    .map(CommonOptions::charset)
-                    .orElse(Iso8583Options.DEFAULT_CHARSET);
-        }
-
-        private static boolean isDebug(CommandLine.ParseResult parseResult) {
-            return ErrorHandler.<Boolean>optionValue(parseResult, "--debug").orElse(false);
+        private static void describeFile(PrintWriter err, FileCommand reader) {
+            try (InputStream in = Files.newInputStream(reader.inputFile())) {
+                IpmInfo info = IpmInfo.inspect(in);
+                err.println("What this file looks like:");
+                if (!info.valid()) {
+                    err.println("  It does not look like an IPM file. " + info.reason());
+                    return;
+                }
+                err.println("  Character set: " + describe(info.encoding()));
+                err.println(
+                        "  1014 byte blocking: "
+                                + (info.blocked() ? "yes" : "no")
+                                + (info.blocked() == reader.inputOptions().blocked()
+                                        ? ""
+                                        : ", which is not what was asked for"));
+            } catch (IOException ignored) {
+                // The original failure is the one worth reporting.
+            }
         }
 
         /**
-         * An option's value on the subcommand that ran, whether it was typed or left to its
-         * default.
+         * What was found out about the file's character set, said plainly.
+         *
+         * <p>The check reads the message type indicator, which is four digits. That separates ASCII
+         * from EBCDIC and no further, so naming one EBCDIC code page here would claim more than was
+         * actually found.
          */
-        private static <T> Optional<T> optionValue(
-                CommandLine.ParseResult parseResult, String name) {
+        private static String describe(IpmInfo.Encoding encoding) {
+            return switch (encoding) {
+                case ASCII -> "single byte ASCII, such as latin_1";
+                case EBCDIC ->
+                        "EBCDIC. Which code page cannot be told from the digits alone, "
+                                + "so try cp500, then cp037";
+                case UNKNOWN -> "could not tell";
+            };
+        }
+
+        /**
+         * The subcommand that ran, where it reads a file.
+         *
+         * <p>Asking the command itself beats looking its options up by name: a command that spells
+         * an option differently, or does not have it, is a compile error rather than a report that
+         * quietly says the wrong thing.
+         */
+        private static Optional<FileCommand> fileCommand(CommandLine.ParseResult parseResult) {
             if (!parseResult.hasSubcommand()) {
                 return Optional.empty();
             }
-            CommandLine.Model.OptionSpec option =
-                    parseResult.subcommand().commandSpec().findOption(name);
-            return option == null ? Optional.empty() : Optional.ofNullable(option.getValue());
+            Object command = parseResult.subcommand().commandSpec().userObject();
+            return command instanceof FileCommand reader ? Optional.of(reader) : Optional.empty();
         }
     }
 }

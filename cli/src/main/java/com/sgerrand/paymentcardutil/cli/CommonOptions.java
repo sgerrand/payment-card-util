@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import picocli.CommandLine.Option;
 
 /** Options every tool takes. */
-class CommonOptions {
+class CommonOptions implements FileCommand.InputOptions {
 
     @Option(
             names = "--in-encoding",
@@ -30,12 +30,20 @@ class CommonOptions {
             description = "Print the full stack trace when something goes wrong.")
     boolean debug;
 
+    /** Whether the full stack trace was asked for. */
+    @Override
+    public boolean debug() {
+        return debug;
+    }
+
     /** Whether the file is blocked. */
-    boolean blocked() {
+    @Override
+    public boolean blocked() {
         return !no1014blocking;
     }
 
-    Charset inCharset() {
+    @Override
+    public Charset inCharset() {
         return charset(inEncoding);
     }
 

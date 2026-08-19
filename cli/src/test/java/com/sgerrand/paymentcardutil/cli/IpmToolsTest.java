@@ -59,7 +59,7 @@ class IpmToolsTest {
     }
 
     private static int run(String... args) {
-        return new CommandLine(new Cardutil()).execute(args);
+        return Cardutil.commandLine().execute(args);
     }
 
     @Test
@@ -267,18 +267,42 @@ class IpmToolsTest {
 
     @Test
     void aFileThatIsNotIpmFailsWithAnExplanation() throws IOException {
+        Path rubbish = writeSomethingThatIsNotIpm();
+
+        String errors =
+                runCapturingErrors(
+                        "mci-ipm-to-csv",
+                        rubbish.toString(),
+                        "-o",
+                        directory.resolve("never.csv").toString());
+
+        assertTrue(errors.contains("What this file looks like:"), errors);
+        assertTrue(errors.contains("does not look like an IPM file"), errors);
+    }
+
+    @Test
+    void everyCommandReadingAnIpmFileExplainsItTheSameWay() throws IOException {
+        Path rubbish = writeSomethingThatIsNotIpm();
+
+        String errors =
+                runCapturingErrors(
+                        "mci-ipm-encode",
+                        rubbish.toString(),
+                        "-o",
+                        directory.resolve("never.out").toString());
+
+        // The explanation used to live in mci-ipm-to-csv alone, so the same
+        // unreadable file gave a hex dump and no hint here.
+        assertTrue(errors.contains("What this file looks like:"), errors);
+        assertTrue(errors.contains("does not look like an IPM file"), errors);
+    }
+
+    private Path writeSomethingThatIsNotIpm() throws IOException {
         Path rubbish = directory.resolve("rubbish.bin");
         Files.write(
                 rubbish,
                 "this is not an IPM file, not even close".getBytes(StandardCharsets.UTF_8));
-
-        assertNotEquals(
-                0,
-                run(
-                        "mci-ipm-to-csv",
-                        rubbish.toString(),
-                        "-o",
-                        directory.resolve("never.csv").toString()));
+        return rubbish;
     }
 
     @Test
@@ -331,13 +355,11 @@ class IpmToolsTest {
                 errors.contains("1240"), "the text column should show the message type: " + errors);
     }
 
+    /** Runs a command expected to fail, and hands back what it wrote to its error stream. */
     private static String runCapturingErrors(String... args) {
         java.io.StringWriter errors = new java.io.StringWriter();
-        CommandLine command =
-                new CommandLine(new Cardutil())
-                        .setExecutionExceptionHandler(new Cardutil.ErrorHandler())
-                        .setErr(new java.io.PrintWriter(errors));
-        assertNotEquals(0, command.execute(args));
+        CommandLine command = Cardutil.commandLine().setErr(new java.io.PrintWriter(errors));
+        assertNotEquals(0, command.execute(args), "the command was expected to fail");
         return errors.toString();
     }
 

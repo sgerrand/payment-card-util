@@ -21,7 +21,7 @@ import picocli.CommandLine.Parameters;
         name = "mci-ipm-encode",
         description = "Rewrite a Mastercard IPM file in another character set or file format.",
         mixinStandardHelpOptions = true)
-final class IpmEncode implements Callable<Integer> {
+final class IpmEncode implements Callable<Integer>, FileCommand {
 
     @Parameters(index = "0", paramLabel = "IPM_FILE", description = "The IPM file to read.")
     Path inFile;
@@ -74,5 +74,20 @@ final class IpmEncode implements Callable<Integer> {
                             field.processorConfig()));
         }
         return builder.build();
+    }
+
+    @Override
+    public Path inputFile() {
+        return inFile;
+    }
+
+    @Override
+    public InputOptions inputOptions() {
+        return options;
+    }
+
+    @Override
+    public boolean readsIpmMessages() {
+        return true;
     }
 }

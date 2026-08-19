@@ -21,7 +21,7 @@ import picocli.CommandLine.Parameters;
         name = "mci-ipm-param-to-csv",
         description = "Write one table from a Mastercard IPM parameter file out as CSV.",
         mixinStandardHelpOptions = true)
-final class IpmParamToCsv implements Callable<Integer> {
+final class IpmParamToCsv implements Callable<Integer>, FileCommand {
 
     @Parameters(index = "0", paramLabel = "PARAM_FILE", description = "The parameter file to read.")
     Path inFile;
@@ -75,5 +75,15 @@ final class IpmParamToCsv implements Callable<Integer> {
         }
         System.out.println("Wrote " + rows.size() + " rows of " + tableId + " to " + out);
         return 0;
+    }
+
+    @Override
+    public Path inputFile() {
+        return inFile;
+    }
+
+    @Override
+    public InputOptions inputOptions() {
+        return common;
     }
 }

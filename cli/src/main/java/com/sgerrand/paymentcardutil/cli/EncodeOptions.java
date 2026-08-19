@@ -11,7 +11,7 @@ import picocli.CommandLine.Option;
  * rather than the single pair {@link CommonOptions} carries. Their input default is cp500, since a
  * file worth rewriting usually came off a mainframe.
  */
-class EncodeOptions {
+class EncodeOptions implements FileCommand.InputOptions {
 
     /** The two file layouts a Mastercard file comes in. */
     enum Format {
@@ -59,8 +59,20 @@ class EncodeOptions {
             description = "Print the full stack trace when something goes wrong.")
     boolean debug;
 
-    Charset inCharset() {
+    @Override
+    public Charset inCharset() {
         return CommonOptions.charset(inEncoding);
+    }
+
+    /** Whether the input file is expected in 1014 byte blocks. */
+    @Override
+    public boolean blocked() {
+        return inFormat.blocked();
+    }
+
+    @Override
+    public boolean debug() {
+        return debug;
     }
 
     Charset outCharset() {

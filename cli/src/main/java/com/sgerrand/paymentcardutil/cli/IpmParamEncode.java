@@ -25,7 +25,7 @@ import picocli.CommandLine.Parameters;
         description =
                 "Rewrite a Mastercard IPM parameter file in another character set or file format.",
         mixinStandardHelpOptions = true)
-final class IpmParamEncode implements Callable<Integer> {
+final class IpmParamEncode implements Callable<Integer>, FileCommand {
 
     @Parameters(index = "0", paramLabel = "PARAM_FILE", description = "The parameter file to read.")
     Path inFile;
@@ -69,5 +69,15 @@ final class IpmParamEncode implements Callable<Integer> {
         }
         System.out.println("Wrote " + count + " records to " + out);
         return 0;
+    }
+
+    @Override
+    public Path inputFile() {
+        return inFile;
+    }
+
+    @Override
+    public InputOptions inputOptions() {
+        return options;
     }
 }

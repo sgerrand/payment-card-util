@@ -3,7 +3,6 @@ package com.sgerrand.paymentcardutil.cli;
 import com.sgerrand.paymentcardutil.card.Pan;
 import com.sgerrand.paymentcardutil.config.FieldProcessor;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
-import com.sgerrand.paymentcardutil.ipm.IpmInfo;
 import com.sgerrand.paymentcardutil.ipm.IpmReader;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
@@ -26,7 +25,7 @@ import picocli.CommandLine.Parameters;
         name = "mci-ipm-to-csv",
         description = "Write the messages in a Mastercard IPM file out as CSV.",
         mixinStandardHelpOptions = true)
-final class IpmToCsv implements Callable<Integer> {
+final class IpmToCsv implements Callable<Integer>, FileCommand {
 
     /** The field processors that mark an element as holding a card number. */
     private static final List<FieldProcessor> PAN_PROCESSORS =
@@ -70,9 +69,6 @@ final class IpmToCsv implements Callable<Integer> {
             for (Iso8583Message message : reader) {
                 rows.add(mask(message.values(), maskedColumns));
             }
-        } catch (com.sgerrand.paymentcardutil.PaymentCardException e) {
-            reportFileTrouble();
-            throw e;
         }
 
         try (BufferedWriter writer = Files.newBufferedWriter(out, common.outCharset())) {
@@ -80,23 +76,6 @@ final class IpmToCsv implements Callable<Integer> {
         }
         System.out.println("Wrote " + rows.size() + " messages to " + out);
         return 0;
-    }
-
-    /**
-     * What was found out about the file's character set, said plainly.
-     *
-     * <p>The check reads the message type indicator, which is four digits. That separates ASCII
-     * from EBCDIC and no further, so naming one EBCDIC code page here would claim more than was
-     * actually found.
-     */
-    private static String describe(IpmInfo.Encoding encoding) {
-        return switch (encoding) {
-            case ASCII -> "single byte ASCII, such as latin_1";
-            case EBCDIC ->
-                    "EBCDIC. Which code page cannot be told from the digits alone, "
-                            + "so try cp500, then cp037";
-            case UNKNOWN -> "could not tell";
-        };
     }
 
     /**
@@ -140,27 +119,18 @@ final class IpmToCsv implements Callable<Integer> {
         return masked;
     }
 
-    /**
-     * Says what could be worked out about the file, which is usually enough to explain why reading
-     * it failed.
-     */
-    private void reportFileTrouble() {
-        try (InputStream in = Files.newInputStream(inFile)) {
-            IpmInfo info = IpmInfo.inspect(in);
-            System.err.println("What this file looks like:");
-            if (!info.valid()) {
-                System.err.println("  It does not look like an IPM file. " + info.reason());
-                return;
-            }
-            System.err.println("  Character set: " + describe(info.encoding()));
-            System.err.println(
-                    "  1014 byte blocking: "
-                            + (info.blocked() ? "yes" : "no")
-                            + (info.blocked() == common.blocked()
-                                    ? ""
-                                    : ", which is not what was asked for"));
-        } catch (java.io.IOException ignored) {
-            // The original failure is the one worth reporting.
-        }
+    @Override
+    public Path inputFile() {
+        return inFile;
+    }
+
+    @Override
+    public InputOptions inputOptions() {
+        return common;
+    }
+
+    @Override
+    public boolean readsIpmMessages() {
+        return true;
     }
 }
