@@ -15,8 +15,9 @@ on:
   release:
     types: [published]
 
-permissions:
-  contents: read
+# Set per job below: publishing needs only to read the repository, while
+# attaching the tools to the release needs to write to it.
+permissions: {}
 
 # Never let two releases publish at once.
 concurrency:
@@ -27,6 +28,8 @@ jobs:
   publish:
     name: Publish to Maven Central
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Check out the released commit
@@ -94,3 +97,61 @@ jobs:
             echo ""
             echo "It may take a few minutes to appear in search."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # The command line tools are not published to Maven Central: the jar carries
+  # its dependencies inside it, and is meant to be downloaded and run rather
+  # than depended on. So the release is where people get it from.
+  #
+  # A separate job, so that it neither needs the publishing credentials nor
+  # lends its write access to them, and so the tools still reach the release if
+  # publishing to Central fails.
+  attach-tools:
+    name: Attach the command line tools
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out the released commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build the tools
+        run: mvn --batch-mode --no-transfer-progress package
+
+      - name: Attach the jar to the release
+        run: |
+          tag='${{ github.event.release.tag_name }}'
+          version="${tag#v}"
+          jar="cli/target/payment-card-util-cli-${version}-all.jar"
+
+          if [ ! -f "$jar" ]; then
+            echo "::error::Expected $jar, but the build did not produce it."
+            ls -1 cli/target/*.jar || true
+            exit 1
+          fi
+
+          # A checksum beside it, so a download can be checked.
+          sha256sum "$jar" | awk '{print $1}' > "$jar.sha256"
+
+          gh release upload "$tag" "$jar" "$jar.sha256" --clobber
+
+          {
+            echo "## Command line tools"
+            echo ""
+            echo "\`$(basename "$jar")\` is attached to the $tag release."
+            echo ""
+            echo "\`\`\`sh"
+            echo "java -jar $(basename "$jar") --help"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

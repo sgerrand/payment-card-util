@@ -126,6 +126,18 @@ Iso0PinBlock.fromEncryptedBytes(bytes, cardNumber, ppk).pin();
 
 ## Command line tools
 
+Every release has the tools attached as a single jar. Download
+`payment-card-util-cli-<version>-all.jar` from the
+[latest release](https://github.com/sgerrand/payment-card-util/releases/latest),
+along with the `.sha256` file beside it if you want to check the download:
+
+```sh
+java -jar payment-card-util-cli-0.1.0-all.jar --help
+```
+
+The jar carries everything it needs, so nothing else has to be installed. To
+build it from source instead:
+
 ```sh
 mvn package
 java -jar cli/target/payment-card-util-cli-*-all.jar --help
