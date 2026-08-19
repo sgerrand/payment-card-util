@@ -3,7 +3,7 @@ package com.sgerrand.paymentcardutil.cli;
 import com.sgerrand.paymentcardutil.ipm.VbsReader;
 import com.sgerrand.paymentcardutil.ipm.VbsWriter;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Parameters;
 
 import java.io.InputStream;
@@ -28,38 +28,20 @@ final class IpmParamEncode implements Callable<Integer> {
     @Parameters(index = "0", paramLabel = "PARAM_FILE", description = "The parameter file to read.")
     Path inFile;
 
-    @Option(names = {"-o", "--out-filename"},
-            description = "Where to write the result. Default: the input file with .out on the end.")
-    Path outFile;
-
-    @Option(names = "--in-encoding", description = "Character set of the input. Default: ${DEFAULT-VALUE}.")
-    String inEncoding = "cp500";
-
-    @Option(names = "--out-encoding", description = "Character set to write. Default: ${DEFAULT-VALUE}.")
-    String outEncoding = "latin_1";
-
-    @Option(names = "--in-format", description = "Layout of the input: ${COMPLETION-CANDIDATES}. "
-            + "Default: ${DEFAULT-VALUE}.")
-    IpmEncode.Format inFormat = IpmEncode.Format.BLOCKED_1014;
-
-    @Option(names = "--out-format", description = "Layout to write: ${COMPLETION-CANDIDATES}. "
-            + "Default: ${DEFAULT-VALUE}.")
-    IpmEncode.Format outFormat = IpmEncode.Format.BLOCKED_1014;
-
-    @Option(names = "--debug", description = "Print the full stack trace when something goes wrong.")
-    boolean debug;
+    @Mixin
+    EncodeOptions options = new EncodeOptions();
 
     @Override
     public Integer call() throws Exception {
-        Path out = outFile != null ? outFile : Path.of(inFile + ".out");
-        Charset from = CommonOptions.charset(inEncoding);
-        Charset to = CommonOptions.charset(outEncoding);
+        Path out = CommonOptions.outputPath(inFile, options.outFile, ".out");
+        Charset from = options.inCharset();
+        Charset to = options.outCharset();
 
         int count = 0;
         try (InputStream in = Files.newInputStream(inFile);
              OutputStream stream = Files.newOutputStream(out);
-             VbsReader reader = inFormat.blocked() ? VbsReader.blocked(in) : VbsReader.of(in);
-             VbsWriter writer = outFormat.blocked() ? VbsWriter.blocked(stream) : VbsWriter.of(stream)) {
+             VbsReader reader = options.inFormat.blocked() ? VbsReader.blocked(in) : VbsReader.of(in);
+             VbsWriter writer = options.outFormat.blocked() ? VbsWriter.blocked(stream) : VbsWriter.of(stream)) {
             for (byte[] record : reader) {
                 writer.write(new String(record, from).getBytes(to));
                 count++;

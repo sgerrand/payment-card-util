@@ -50,7 +50,7 @@ final class IpmParamToCsv implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         IsoConfig config = ConfigFiles.load(configFile);
-        Path out = outFile != null ? outFile : Path.of(inFile + "_" + tableId + ".csv");
+        Path out = CommonOptions.outputPath(inFile, outFile, "_" + tableId + ".csv");
 
         List<Map<String, ?>> rows = new ArrayList<>();
         List<String> columns;

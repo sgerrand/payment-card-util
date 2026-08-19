@@ -53,7 +53,7 @@ final class IpmToCsv implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         IsoConfig config = ConfigFiles.load(configFile);
-        Path out = outFile != null ? outFile : Path.of(inFile + ".csv");
+        Path out = CommonOptions.outputPath(inFile, outFile, ".csv");
         Iso8583Options options = Iso8583Options.defaults()
                 .withCharset(common.inCharset())
                 .withConfig(config);

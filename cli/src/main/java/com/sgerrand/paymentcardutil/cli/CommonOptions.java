@@ -6,6 +6,7 @@ import picocli.CommandLine.Option;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
+import java.nio.file.Path;
 
 /**
  * Options every tool takes.
@@ -39,6 +40,14 @@ class CommonOptions {
 
     Charset outCharset() {
         return charset(outEncoding);
+    }
+
+    /**
+     * Where a tool writes to: what was asked for, or the input file with a
+     * suffix on the end.
+     */
+    static Path outputPath(Path inFile, Path outFile, String suffix) {
+        return outFile != null ? outFile : Path.of(inFile + suffix);
     }
 
     /**

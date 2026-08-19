@@ -41,7 +41,7 @@ final class CsvToIpm implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         IsoConfig config = ConfigFiles.load(configFile);
-        Path out = outFile != null ? outFile : Path.of(inFile + ".ipm");
+        Path out = CommonOptions.outputPath(inFile, outFile, ".ipm");
         Iso8583Options options = Iso8583Options.defaults()
                 .withCharset(common.outCharset())
                 .withConfig(config);
