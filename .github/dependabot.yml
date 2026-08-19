@@ -34,8 +34,17 @@ updates:
       prefix-development: chore
       include: scope
     groups:
-      maven:
+      # Split by type so each pull request gets the prefix that fits it:
+      # build for what ships, chore for what only the tests use. Grouped
+      # together, a week that bumped both would have to pick one.
+      maven-production:
         applies-to: version-updates
+        dependency-type: production
+        patterns:
+          - "*"
+      maven-development:
+        applies-to: version-updates
+        dependency-type: development
         patterns:
           - "*"
       security:
