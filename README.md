@@ -135,9 +135,13 @@ Every release has the tools attached as a single jar. Download
 [latest release](https://github.com/sgerrand/payment-card-util/releases/latest),
 along with the `.sha256` file beside it if you want to check the download:
 
+<!-- x-release-please-start-version -->
+
 ```sh
 java -jar payment-card-util-cli-0.1.0-all.jar --help
 ```
+
+<!-- x-release-please-end -->
 
 The jar carries everything it needs, so nothing else has to be installed. To
 build it from source instead:
@@ -155,19 +159,27 @@ java -jar cli/target/payment-card-util-cli-*-all.jar --help
 | `mci-ipm-param-to-csv` | Write one parameter table out as CSV |
 | `mci-ipm-param-encode` | Rewrite a parameter file in another character set or format |
 
+<!-- x-release-please-start-version -->
+
 ```sh
-java -jar payment-card-util-cli-all.jar mci-ipm-to-csv clearing.ipm
-java -jar payment-card-util-cli-all.jar mci-ipm-encode clearing.ipm \
+java -jar payment-card-util-cli-0.1.0-all.jar mci-ipm-to-csv clearing.ipm
+java -jar payment-card-util-cli-0.1.0-all.jar mci-ipm-encode clearing.ipm \
     --in-encoding cp500 --out-encoding latin_1 --out-format VBS
 ```
+
+<!-- x-release-please-end -->
 
 A layout other than the built in one goes in a JSON file, in the same shape
 cardutil uses:
 
+<!-- x-release-please-start-version -->
+
 ```sh
-java -jar payment-card-util-cli-all.jar mci-ipm-to-csv clearing.ipm \
+java -jar payment-card-util-cli-0.1.0-all.jar mci-ipm-to-csv clearing.ipm \
     --config-file my-layout.json
 ```
+
+<!-- x-release-please-end -->
 
 The `CARDUTIL_CONFIG` environment variable also works: point it at a directory
 holding `cardutil.json`.
