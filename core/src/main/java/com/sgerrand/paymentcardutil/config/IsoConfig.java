@@ -70,6 +70,20 @@ public final class IsoConfig {
     }
 
     /**
+     * The data elements handled by one field processor, in number order.
+     *
+     * <p>Which element carries private data, chip data or an acquirer address
+     * is a property of the layout, so asking the config beats every caller
+     * walking {@link #bitConfig()} with its own filter.
+     */
+    public List<Integer> bitsWithProcessor(FieldProcessor processor) {
+        return bitConfig.entrySet().stream()
+                .filter(entry -> entry.getValue().processor() == processor)
+                .map(Map.Entry::getKey)
+                .toList();
+    }
+
+    /**
      * The keys the CSV tools write out, in column order. Keys are of the same
      * form as message keys: {@code MTI}, {@code DE2}, {@code PDS0158},
      * {@code DE43_NAME}, {@code ICC_DATA}.

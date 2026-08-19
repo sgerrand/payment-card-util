@@ -1,6 +1,7 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
  * An ISO 8583 bitmap: the bits that say which data elements a message holds.
@@ -110,20 +111,7 @@ public final class Bitmap {
 
     /** The field numbers this bitmap has set, in order. */
     public int[] fields() {
-        int count = 0;
-        for (int field = 1; field <= capacity(); field++) {
-            if (isSet(field)) {
-                count++;
-            }
-        }
-        int[] result = new int[count];
-        int next = 0;
-        for (int field = 1; field <= capacity(); field++) {
-            if (isSet(field)) {
-                result[next++] = field;
-            }
-        }
-        return result;
+        return IntStream.rangeClosed(1, capacity()).filter(this::isSet).toArray();
     }
 
     /** A copy of the raw bytes. */

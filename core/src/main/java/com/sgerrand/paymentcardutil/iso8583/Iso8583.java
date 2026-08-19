@@ -12,7 +12,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +43,8 @@ import java.util.Map;
  * {@link IsoConfig}, not from this class.
  */
 public final class Iso8583 {
+
+    private static final HexFormat HEX = HexFormat.of();
 
     /** Bytes taken by the message type indicator. */
     private static final int MTI_LENGTH = 4;
@@ -191,7 +192,7 @@ public final class Iso8583 {
         // Hex bitmaps are always ASCII digits, whatever the message encoding is.
         String hex = new String(message, MTI_LENGTH, HEX_BITMAP_LENGTH, StandardCharsets.ISO_8859_1);
         try {
-            return Bitmap.of(HexFormat.of().parseHex(hex));
+            return Bitmap.of(HEX.parseHex(hex));
         } catch (IllegalArgumentException e) {
             throw new Iso8583Exception("Bitmap is not valid hex: " + hex, message, e);
         }
@@ -202,7 +203,7 @@ public final class Iso8583 {
         if (!options.hexBitmap()) {
             return bytes;
         }
-        return HexFormat.of().formatHex(bytes).getBytes(StandardCharsets.ISO_8859_1);
+        return HEX.formatHex(bytes).getBytes(StandardCharsets.ISO_8859_1);
     }
 
     private static String readMti(byte[] message, Charset charset) {
@@ -250,7 +251,7 @@ public final class Iso8583 {
 
         if (field.processor() == FieldProcessor.ICC) {
             builder.put(Iso8583Message.deKey(bit), raw);
-            builder.putAll(IccCodec.unpack(raw, field.processorConfig()));
+            builder.putAll(IccCodec.unpack(bit, raw, field.processorConfig()));
             return fieldLength + lengthSize;
         }
 
@@ -385,12 +386,7 @@ public final class Iso8583 {
         if (groups.isEmpty()) {
             return;
         }
-        List<Integer> carriers = new ArrayList<>();
-        config.bitConfig().forEach((bit, field) -> {
-            if (field.processor() == FieldProcessor.PDS) {
-                carriers.add(bit);
-            }
-        });
+        List<Integer> carriers = config.bitsWithProcessor(FieldProcessor.PDS);
         if (groups.size() > carriers.size()) {
             throw new Iso8583Exception(
                     "The message holds more private data than fits: " + groups.size()

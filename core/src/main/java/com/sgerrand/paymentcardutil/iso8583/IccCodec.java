@@ -2,7 +2,6 @@ package com.sgerrand.paymentcardutil.iso8583;
 
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -13,10 +12,10 @@ import java.util.Map;
  */
 final class IccCodec {
 
-    /** Key holding the whole field as hex. */
-    static final String ICC_DATA_KEY = Iso8583Message.ICC_DATA_KEY;
-
     private static final HexFormat HEX = HexFormat.of();
+
+    /** Tag names are written in upper case, values in lower. */
+    private static final HexFormat UPPER_HEX = HexFormat.of().withUpperCase();
 
     private IccCodec() {
     }
@@ -51,46 +50,45 @@ final class IccCodec {
     /**
      * Breaks the field into tags.
      *
-     * @param fieldData       the raw bytes of DE 55
+     * @param bit             which data element the chip data came from, for
+     *                        error messages
+     * @param fieldData       the raw bytes of the field
      * @param processorConfig settings from the field config, such as {@code on_error=ERROR}
      * @return {@code ICC_DATA} holding the whole field as hex, plus one
      *         {@code TAGxxxx} entry per tag read
      * @throws Iso8583Exception if the data is malformed and {@code on_error=ERROR}
      */
-    static Map<String, String> unpack(byte[] fieldData, String processorConfig) {
+    static Map<String, String> unpack(int bit, byte[] fieldData, String processorConfig) {
         OnError onError = OnError.from(processorConfig);
         Map<String, String> values = new LinkedHashMap<>();
-        values.put(ICC_DATA_KEY, HEX.formatHex(fieldData));
+        values.put(Iso8583Message.ICC_DATA_KEY, HEX.formatHex(fieldData));
 
         int pointer = 0;
         while (pointer < fieldData.length) {
             int tagStart = pointer;
             int tagLength = isTwoByteTag(fieldData[pointer]) ? 2 : 1;
             if (tagStart + tagLength > fieldData.length) {
-                if (stop(onError, "Incomplete tag at position " + tagStart)) {
-                    break;
-                }
+                stopOrThrow(onError, bit, "Incomplete tag at position " + tagStart);
+                break;
             }
             pointer = tagStart + tagLength;
-            String tag = HEX.formatHex(fieldData, tagStart, pointer).toUpperCase(Locale.ROOT);
+            String tag = UPPER_HEX.formatHex(fieldData, tagStart, pointer);
 
             // Low values mean the rest of the field is padding.
             if (tag.equals("00")) {
                 break;
             }
             if (pointer >= fieldData.length) {
-                if (stop(onError, "No length byte for tag " + tag + " at position " + pointer)) {
-                    break;
-                }
+                stopOrThrow(onError, bit, "No length byte for tag " + tag + " at position " + pointer);
+                break;
             }
             int length = fieldData[pointer] & 0xFF;
             int valueStart = pointer + 1;
             int valueEnd = valueStart + length;
             if (valueEnd > fieldData.length) {
-                if (stop(onError, "Tag " + tag + " says it is " + length + " bytes, but only "
-                        + (fieldData.length - valueStart) + " remain")) {
-                    break;
-                }
+                stopOrThrow(onError, bit, "Tag " + tag + " says it is " + length + " bytes, but only "
+                        + (fieldData.length - valueStart) + " remain");
+                break;
             }
             values.put("TAG" + tag, HEX.formatHex(fieldData, valueStart, valueEnd));
             pointer = valueEnd;
@@ -104,13 +102,13 @@ final class IccCodec {
     }
 
     /**
-     * @return true if reading should stop
+     * Reading stops here either way; this decides whether it stops quietly.
+     *
      * @throws Iso8583Exception if the setting says to fail
      */
-    private static boolean stop(OnError onError, String message) {
+    private static void stopOrThrow(OnError onError, int bit, String message) {
         if (onError == OnError.ERROR) {
-            throw new Iso8583Exception("DE55: " + message);
+            throw new Iso8583Exception("DE" + bit + ": " + message);
         }
-        return true;
     }
 }
