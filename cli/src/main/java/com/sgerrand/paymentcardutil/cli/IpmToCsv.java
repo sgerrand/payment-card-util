@@ -7,11 +7,6 @@ import com.sgerrand.paymentcardutil.ipm.IpmInfo;
 import com.sgerrand.paymentcardutil.ipm.IpmReader;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.Mixin;
-import picocli.CommandLine.Option;
-import picocli.CommandLine.Parameters;
-
 import java.io.BufferedWriter;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -21,11 +16,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
-/**
- * Turns a Mastercard IPM clearing file into CSV.
- */
-@Command(name = "mci-ipm-to-csv",
+/** Turns a Mastercard IPM clearing file into CSV. */
+@Command(
+        name = "mci-ipm-to-csv",
         description = "Write the messages in a Mastercard IPM file out as CSV.",
         mixinStandardHelpOptions = true)
 final class IpmToCsv implements Callable<Integer> {
@@ -40,34 +38,35 @@ final class IpmToCsv implements Callable<Integer> {
     @Parameters(index = "0", paramLabel = "IPM_FILE", description = "The IPM file to read.")
     Path inFile;
 
-    @Option(names = {"-o", "--out-filename"},
+    @Option(
+            names = {"-o", "--out-filename"},
             description = "Where to write the CSV. Default: the input file with .csv on the end.")
     Path outFile;
 
     @Option(names = "--config-file", description = "JSON file holding the message layout.")
     Path configFile;
 
-    @Option(names = "--unmask-pan",
-            description = "Write full card numbers. By default they are masked, since a CSV "
-                    + "of card numbers is easy to mislay.")
+    @Option(
+            names = "--unmask-pan",
+            description =
+                    "Write full card numbers. By default they are masked, since a CSV "
+                            + "of card numbers is easy to mislay.")
     boolean unmaskPan;
 
-    @Mixin
-    CommonOptions common = new CommonOptions();
+    @Mixin CommonOptions common = new CommonOptions();
 
     @Override
     public Integer call() throws Exception {
         IsoConfig config = ConfigFiles.load(configFile);
         Path out = CommonOptions.outputPath(inFile, outFile, ".csv");
-        Iso8583Options options = Iso8583Options.defaults()
-                .withCharset(common.inCharset())
-                .withConfig(config);
+        Iso8583Options options =
+                Iso8583Options.defaults().withCharset(common.inCharset()).withConfig(config);
 
         List<String> maskedColumns = unmaskPan ? List.of() : panColumns(config);
         List<Map<String, ?>> rows = new ArrayList<>();
 
         try (InputStream in = Files.newInputStream(inFile);
-             IpmReader reader = IpmReader.open(in, options, common.blocked())) {
+                IpmReader reader = IpmReader.open(in, options, common.blocked())) {
             for (Iso8583Message message : reader) {
                 rows.add(mask(message.values(), maskedColumns));
             }
@@ -86,15 +85,16 @@ final class IpmToCsv implements Callable<Integer> {
     /**
      * What was found out about the file's character set, said plainly.
      *
-     * <p>The check reads the message type indicator, which is four digits. That
-     * separates ASCII from EBCDIC and no further, so naming one EBCDIC code page
-     * here would claim more than was actually found.
+     * <p>The check reads the message type indicator, which is four digits. That separates ASCII
+     * from EBCDIC and no further, so naming one EBCDIC code page here would claim more than was
+     * actually found.
      */
     private static String describe(IpmInfo.Encoding encoding) {
         return switch (encoding) {
             case ASCII -> "single byte ASCII, such as latin_1";
-            case EBCDIC -> "EBCDIC. Which code page cannot be told from the digits alone, "
-                    + "so try cp500, then cp037";
+            case EBCDIC ->
+                    "EBCDIC. Which code page cannot be told from the digits alone, "
+                            + "so try cp500, then cp037";
             case UNKNOWN -> "could not tell";
         };
     }
@@ -102,27 +102,27 @@ final class IpmToCsv implements Callable<Integer> {
     /**
      * Columns holding a card number, according to the layout.
      *
-     * <p>Two things mark one, and either is enough. The {@code PAN} or
-     * {@code PAN-PREFIX} field processor is cardutil's own way of saying it and
-     * the only machine readable signal there is. The element's name is a label
-     * meant for people, so it can be translated, written out in full or reused,
-     * which makes it a poor signal on its own.
+     * <p>Two things mark one, and either is enough. The {@code PAN} or {@code PAN-PREFIX} field
+     * processor is cardutil's own way of saying it and the only machine readable signal there is.
+     * The element's name is a label meant for people, so it can be translated, written out in full
+     * or reused, which makes it a poor signal on its own.
      *
-     * <p>Both count because neither covers everything. The built-in Mastercard
-     * layout marks no element by processor, since it is generated from
-     * cardutil's config and cardutil does not mask, so going by the processor
-     * alone would quietly write full card numbers. Going by the name alone
-     * misses an element a layout marks outright. Taking either means a column
-     * has to shake off both to come out unmasked.
+     * <p>Both count because neither covers everything. The built-in Mastercard layout marks no
+     * element by processor, since it is generated from cardutil's config and cardutil does not
+     * mask, so going by the processor alone would quietly write full card numbers. Going by the
+     * name alone misses an element a layout marks outright. Taking either means a column has to
+     * shake off both to come out unmasked.
      */
     static List<String> panColumns(IsoConfig config) {
         List<String> columns = new ArrayList<>();
-        config.bitConfig().forEach((bit, field) -> {
-            if (PAN_PROCESSORS.contains(field.processor())
-                    || PAN_FIELD_NAME.equalsIgnoreCase(field.name())) {
-                columns.add(Iso8583Message.deKey(bit));
-            }
-        });
+        config.bitConfig()
+                .forEach(
+                        (bit, field) -> {
+                            if (PAN_PROCESSORS.contains(field.processor())
+                                    || PAN_FIELD_NAME.equalsIgnoreCase(field.name())) {
+                                columns.add(Iso8583Message.deKey(bit));
+                            }
+                        });
         return columns;
     }
 
@@ -141,8 +141,8 @@ final class IpmToCsv implements Callable<Integer> {
     }
 
     /**
-     * Says what could be worked out about the file, which is usually enough to
-     * explain why reading it failed.
+     * Says what could be worked out about the file, which is usually enough to explain why reading
+     * it failed.
      */
     private void reportFileTrouble() {
         try (InputStream in = Files.newInputStream(inFile)) {
@@ -153,8 +153,12 @@ final class IpmToCsv implements Callable<Integer> {
                 return;
             }
             System.err.println("  Character set: " + describe(info.encoding()));
-            System.err.println("  1014 byte blocking: " + (info.blocked() ? "yes" : "no")
-                    + (info.blocked() == common.blocked() ? "" : ", which is not what was asked for"));
+            System.err.println(
+                    "  1014 byte blocking: "
+                            + (info.blocked() ? "yes" : "no")
+                            + (info.blocked() == common.blocked()
+                                    ? ""
+                                    : ", which is not what was asked for"));
         } catch (java.io.IOException ignored) {
             // The original failure is the one worth reporting.
         }

@@ -7,9 +7,9 @@ import java.io.OutputStream;
 /**
  * Writes a variable blocked (VBS) file.
  *
- * <p>Each record is written with a 4 byte length in front of it. Closing the
- * writer adds the zero length record that marks the end of the file, and fills
- * out the last block if the file is blocked.
+ * <p>Each record is written with a 4 byte length in front of it. Closing the writer adds the zero
+ * length record that marks the end of the file, and fills out the last block if the file is
+ * blocked.
  *
  * <pre>{@code
  * try (VbsWriter writer = VbsWriter.blocked(Files.newOutputStream(path))) {
@@ -17,8 +17,8 @@ import java.io.OutputStream;
  * }
  * }</pre>
  *
- * <p>A file whose writer was never closed has no end marker. Readers here cope
- * with that, but other systems may not.
+ * <p>A file whose writer was never closed has no end marker. Readers here cope with that, but other
+ * systems may not.
  */
 public final class VbsWriter implements Closeable {
 
@@ -64,8 +64,8 @@ public final class VbsWriter implements Closeable {
     }
 
     /**
-     * Finishes the file: writes the zero length end marker, fills out the last
-     * block if blocked, and closes the stream underneath.
+     * Finishes the file: writes the zero length end marker, fills out the last block if blocked,
+     * and closes the stream underneath.
      */
     @Override
     public void close() throws IOException {

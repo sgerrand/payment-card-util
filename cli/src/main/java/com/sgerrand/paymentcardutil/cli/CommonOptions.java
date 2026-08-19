@@ -1,32 +1,33 @@
 package com.sgerrand.paymentcardutil.cli;
 
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
-import picocli.CommandLine.Option;
-
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Path;
+import picocli.CommandLine.Option;
 
-/**
- * Options every tool takes.
- */
+/** Options every tool takes. */
 class CommonOptions {
 
-    @Option(names = "--in-encoding",
-            description = "Character set of the input file. Default: ${DEFAULT-VALUE}. "
-                    + "Files from a mainframe are usually cp500.")
+    @Option(
+            names = "--in-encoding",
+            description =
+                    "Character set of the input file. Default: ${DEFAULT-VALUE}. "
+                            + "Files from a mainframe are usually cp500.")
     String inEncoding = "latin_1";
 
-    @Option(names = "--out-encoding",
+    @Option(
+            names = "--out-encoding",
             description = "Character set of the output file. Default: ${DEFAULT-VALUE}.")
     String outEncoding = "latin_1";
 
-    @Option(names = "--no1014blocking",
-            description = "The file is not in 1014 byte blocks.")
+    @Option(names = "--no1014blocking", description = "The file is not in 1014 byte blocks.")
     boolean no1014blocking;
 
-    @Option(names = "--debug", description = "Print the full stack trace when something goes wrong.")
+    @Option(
+            names = "--debug",
+            description = "Print the full stack trace when something goes wrong.")
     boolean debug;
 
     /** Whether the file is blocked. */
@@ -42,17 +43,14 @@ class CommonOptions {
         return charset(outEncoding);
     }
 
-    /**
-     * Where a tool writes to: what was asked for, or the input file with a
-     * suffix on the end.
-     */
+    /** Where a tool writes to: what was asked for, or the input file with a suffix on the end. */
     static Path outputPath(Path inFile, Path outFile, String suffix) {
         return outFile != null ? outFile : Path.of(inFile + suffix);
     }
 
     /**
-     * Maps a character set name onto a Java charset, understanding the Python
-     * codec names cardutil's documentation uses.
+     * Maps a character set name onto a Java charset, understanding the Python codec names
+     * cardutil's documentation uses.
      */
     static Charset charset(String name) {
         try {

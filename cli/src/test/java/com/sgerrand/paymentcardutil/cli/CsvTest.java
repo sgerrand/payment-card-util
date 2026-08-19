@@ -1,6 +1,6 @@
 package com.sgerrand.paymentcardutil.cli;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -10,16 +10,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-/**
- * Checks the CSV handling matches Python's csv module, which is what cardutil
- * writes with.
- */
+/** Checks the CSV handling matches Python's csv module, which is what cardutil writes with. */
 class CsvTest {
 
-    private static String write(List<String> columns, List<Map<String, ?>> rows) throws IOException {
+    private static String write(List<String> columns, List<Map<String, ?>> rows)
+            throws IOException {
         StringWriter out = new StringWriter();
         Csv.write(new BufferedWriter(out), columns, rows);
         return out.toString();
@@ -27,15 +24,18 @@ class CsvTest {
 
     @Test
     void writesAHeaderAndOneLinePerRow() throws IOException {
-        assertEquals("a,b\n1,2\n3,4\n", write(
-                List.of("a", "b"),
-                List.of(Map.of("a", "1", "b", "2"), Map.of("a", "3", "b", "4"))));
+        assertEquals(
+                "a,b\n1,2\n3,4\n",
+                write(
+                        List.of("a", "b"),
+                        List.of(Map.of("a", "1", "b", "2"), Map.of("a", "3", "b", "4"))));
     }
 
     @Test
     void missingValuesBecomeEmptyCells() throws IOException {
-        assertEquals("a,b,c\n1,,3\n", write(
-                List.of("a", "b", "c"), List.of(Map.of("a", "1", "c", "3"))));
+        assertEquals(
+                "a,b,c\n1,,3\n",
+                write(List.of("a", "b", "c"), List.of(Map.of("a", "1", "c", "3"))));
     }
 
     @Test
@@ -45,9 +45,20 @@ class CsvTest {
 
     @Test
     void onlyAwkwardValuesAreQuoted() throws IOException {
-        assertEquals("a,b,c,d\nplain,\"has,comma\",\"has\"\"quote\",\"has\nnewline\"\n", write(
-                List.of("a", "b", "c", "d"),
-                List.of(Map.of("a", "plain", "b", "has,comma", "c", "has\"quote", "d", "has\nnewline"))));
+        assertEquals(
+                "a,b,c,d\nplain,\"has,comma\",\"has\"\"quote\",\"has\nnewline\"\n",
+                write(
+                        List.of("a", "b", "c", "d"),
+                        List.of(
+                                Map.of(
+                                        "a",
+                                        "plain",
+                                        "b",
+                                        "has,comma",
+                                        "c",
+                                        "has\"quote",
+                                        "d",
+                                        "has\nnewline"))));
     }
 
     @Test
@@ -70,9 +81,7 @@ class CsvTest {
 
     @Test
     void readsBackWhatItWrites() throws IOException {
-        String csv = write(
-                List.of("a", "b"),
-                List.of(Map.of("a", "has,comma", "b", "has\"quote")));
+        String csv = write(List.of("a", "b"), List.of(Map.of("a", "has,comma", "b", "has\"quote")));
         assertEquals(
                 List.of(Map.of("a", "has,comma", "b", "has\"quote")),
                 Csv.read(new StringReader(csv)));
@@ -81,8 +90,7 @@ class CsvTest {
     @Test
     void readingLeavesOutEmptyCells() throws IOException {
         assertEquals(
-                List.of(Map.of("a", "1", "c", "3")),
-                Csv.read(new StringReader("a,b,c\n1,,3\n")));
+                List.of(Map.of("a", "1", "c", "3")), Csv.read(new StringReader("a,b,c\n1,,3\n")));
     }
 
     @Test
@@ -93,10 +101,9 @@ class CsvTest {
     }
 
     /**
-     * Excel and Python's csv module both end rows with a carriage return and a
-     * newline. Ending the row on the carriage return would leave the newline to
-     * start, and immediately end, a row of its own, and mci-csv-to-ipm would
-     * write an empty message for each one.
+     * Excel and Python's csv module both end rows with a carriage return and a newline. Ending the
+     * row on the carriage return would leave the newline to start, and immediately end, a row of
+     * its own, and mci-csv-to-ipm would write an empty message for each one.
      */
     @Test
     void readingCopesWithCarriageReturnsAfterAQuotedCell() throws IOException {
@@ -108,8 +115,7 @@ class CsvTest {
     @Test
     void readingCopesWithCarriageReturnsAfterAPlainCell() throws IOException {
         assertEquals(
-                List.of(Map.of("a", "1", "b", "2")),
-                Csv.read(new StringReader("a,b\r\n1,2\r\n")));
+                List.of(Map.of("a", "1", "b", "2")), Csv.read(new StringReader("a,b\r\n1,2\r\n")));
     }
 
     @Test

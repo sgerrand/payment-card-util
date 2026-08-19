@@ -8,9 +8,8 @@ import java.util.regex.Matcher;
 /**
  * Breaks DE 43, the card acceptor name and location, into its parts.
  *
- * <p>The field is one string with backslash separators. Which parts to pull out
- * is set by a regular expression in the field config, so a different acquirer
- * layout needs only a different pattern.
+ * <p>The field is one string with backslash separators. Which parts to pull out is set by a regular
+ * expression in the field config, so a different acquirer layout needs only a different pattern.
  */
 final class De43Codec {
 
@@ -19,16 +18,14 @@ final class De43Codec {
     /** Part whose trailing spaces are stripped, matching cardutil. */
     private static final String POSTCODE_KEY = "DE43_POSTCODE";
 
-    private De43Codec() {
-    }
+    private De43Codec() {}
 
     /**
      * Pulls the parts out of DE 43.
      *
-     * @param fieldData       the field's text
+     * @param fieldData the field's text
      * @param processorConfig the pattern, in Python form; {@code null} means do nothing
-     * @return the parts, keyed by group name, or empty if the field does not
-     *         match the pattern
+     * @return the parts, keyed by group name, or empty if the field does not match the pattern
      */
     static Map<String, String> unpack(String fieldData, String processorConfig) {
         if (processorConfig == null || processorConfig.isEmpty()) {
@@ -43,7 +40,9 @@ final class De43Codec {
         }
 
         Map<String, String> values = new LinkedHashMap<>();
-        for (int group = 1; group <= regex.groupNames().size() && group <= matcher.groupCount(); group++) {
+        for (int group = 1;
+                group <= regex.groupNames().size() && group <= matcher.groupCount();
+                group++) {
             String name = regex.groupNames().get(group - 1);
             String value = matcher.group(group);
             if (value == null) {

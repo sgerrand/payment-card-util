@@ -1,31 +1,30 @@
 package com.sgerrand.paymentcardutil.ipm;
 
-import com.sgerrand.paymentcardutil.iso8583.Iso8583;
-import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
-import org.junit.jupiter.api.Test;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.sgerrand.paymentcardutil.iso8583.Iso8583;
+import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import org.junit.jupiter.api.Test;
+
 /**
  * Writing records whose bytes are already in ISO 8583 form.
  *
- * <p>This is how a file is copied across without reading its messages, which
- * matters because a message this layout does not fully understand comes out
- * changed if it is taken apart and rebuilt.
+ * <p>This is how a file is copied across without reading its messages, which matters because a
+ * message this layout does not fully understand comes out changed if it is taken apart and rebuilt.
  */
 class IpmWriterRawTest {
 
-    private static final Iso8583Message MESSAGE = Iso8583Message.builder()
-            .mti("1240")
-            .de(2, "4444555566667777")
-            .de(37, "REF00000001")
-            .build();
+    private static final Iso8583Message MESSAGE =
+            Iso8583Message.builder()
+                    .mti("1240")
+                    .de(2, "4444555566667777")
+                    .de(37, "REF00000001")
+                    .build();
 
     @Test
     void aRawRecordIsWrittenAsItStands() throws IOException {
@@ -59,7 +58,7 @@ class IpmWriterRawTest {
     @Test
     void aBlockedWriterSaysSo() throws IOException {
         try (IpmWriter blocked = IpmWriter.blocked(new ByteArrayOutputStream());
-             IpmWriter plain = IpmWriter.of(new ByteArrayOutputStream())) {
+                IpmWriter plain = IpmWriter.of(new ByteArrayOutputStream())) {
             assertTrue(blocked.isBlocked());
             assertFalse(plain.isBlocked());
         }

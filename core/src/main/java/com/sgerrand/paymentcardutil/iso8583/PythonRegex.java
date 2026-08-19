@@ -7,15 +7,14 @@ import java.util.regex.Pattern;
 /**
  * Translates a Python regular expression with named groups into a Java one.
  *
- * <p>Two things differ. Python writes a named group as {@code (?P<name>...)},
- * Java as {@code (?<name>...)}. And Java only allows letters and digits in a
- * group name, so a config name like {@code DE43_POSTCODE} cannot be used as a
- * Java group name at all.
+ * <p>Two things differ. Python writes a named group as {@code (?P<name>...)}, Java as {@code
+ * (?<name>...)}. And Java only allows letters and digits in a group name, so a config name like
+ * {@code DE43_POSTCODE} cannot be used as a Java group name at all.
  *
- * <p>So the names are stripped out and recorded in order instead, leaving plain
- * numbered groups. Group 1 is the first name, group 2 the second, and so on.
+ * <p>So the names are stripped out and recorded in order instead, leaving plain numbered groups.
+ * Group 1 is the first name, group 2 the second, and so on.
  *
- * @param pattern    the translated pattern
+ * @param pattern the translated pattern
  * @param groupNames the names, in the order their groups appear
  */
 record PythonRegex(Pattern pattern, List<String> groupNames) {

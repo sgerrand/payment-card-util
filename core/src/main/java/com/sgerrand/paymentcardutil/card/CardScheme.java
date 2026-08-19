@@ -1,10 +1,7 @@
 package com.sgerrand.paymentcardutil.card;
 
-/**
- * The card scheme (network) that issued a card number.
- */
+/** The card scheme (network) that issued a card number. */
 public enum CardScheme {
-
     VISA,
     MASTERCARD,
     AMERICAN_EXPRESS,

@@ -3,7 +3,6 @@ package com.sgerrand.paymentcardutil.ipm;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
-
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -19,8 +18,8 @@ import java.io.OutputStream;
  * }
  * }</pre>
  *
- * <p>Closing the writer finishes the file off. A file left unclosed has no end
- * marker and, if blocked, an unfinished last block.
+ * <p>Closing the writer finishes the file off. A file left unclosed has no end marker and, if
+ * blocked, an unfinished last block.
  */
 public final class IpmWriter implements java.io.Closeable {
 
@@ -70,8 +69,8 @@ public final class IpmWriter implements java.io.Closeable {
     }
 
     /**
-     * Adds a record whose bytes are already in ISO 8583 form. For copying a
-     * file across without reading its messages.
+     * Adds a record whose bytes are already in ISO 8583 form. For copying a file across without
+     * reading its messages.
      */
     public void writeRaw(byte[] record) throws IOException {
         records.write(record);

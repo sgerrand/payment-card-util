@@ -9,12 +9,12 @@ import java.util.Optional;
 import java.util.TreeMap;
 
 /**
- * Everything the message readers and writers need to know about a message
- * layout: which data elements exist, how each is encoded, which ones the CSV
- * tools write out, and how parameter table records are laid out.
+ * Everything the message readers and writers need to know about a message layout: which data
+ * elements exist, how each is encoded, which ones the CSV tools write out, and how parameter table
+ * records are laid out.
  *
- * <p>{@link #defaults()} holds the Mastercard IPM layout. Build a changed copy
- * with {@link #toBuilder()} when a file needs a different layout.
+ * <p>{@link #defaults()} holds the Mastercard IPM layout. Build a changed copy with {@link
+ * #toBuilder()} when a file needs a different layout.
  */
 public final class IsoConfig {
 
@@ -31,7 +31,8 @@ public final class IsoConfig {
     private IsoConfig(Builder builder) {
         this.bitConfig = Collections.unmodifiableMap(new TreeMap<>(builder.bitConfig));
         this.outputDataElements = List.copyOf(builder.outputDataElements);
-        this.parameterTables = Collections.unmodifiableMap(new LinkedHashMap<>(builder.parameterTables));
+        this.parameterTables =
+                Collections.unmodifiableMap(new LinkedHashMap<>(builder.parameterTables));
         this.maxVbsRecordLength = builder.maxVbsRecordLength;
     }
 
@@ -72,9 +73,9 @@ public final class IsoConfig {
     /**
      * The data elements handled by one field processor, in number order.
      *
-     * <p>Which element carries private data, chip data or an acquirer address
-     * is a property of the layout, so asking the config beats every caller
-     * walking {@link #bitConfig()} with its own filter.
+     * <p>Which element carries private data, chip data or an acquirer address is a property of the
+     * layout, so asking the config beats every caller walking {@link #bitConfig()} with its own
+     * filter.
      */
     public List<Integer> bitsWithProcessor(FieldProcessor processor) {
         return bitConfig.entrySet().stream()
@@ -84,9 +85,8 @@ public final class IsoConfig {
     }
 
     /**
-     * The keys the CSV tools write out, in column order. Keys are of the same
-     * form as message keys: {@code MTI}, {@code DE2}, {@code PDS0158},
-     * {@code DE43_NAME}, {@code ICC_DATA}.
+     * The keys the CSV tools write out, in column order. Keys are of the same form as message keys:
+     * {@code MTI}, {@code DE2}, {@code PDS0158}, {@code DE43_NAME}, {@code ICC_DATA}.
      */
     public List<String> outputDataElements() {
         return outputDataElements;
@@ -115,8 +115,7 @@ public final class IsoConfig {
         private final Map<String, ParamTable> parameterTables = new LinkedHashMap<>();
         private int maxVbsRecordLength = DEFAULT_MAX_VBS_RECORD_LENGTH;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         /** Sets the layout of one data element, replacing any existing entry. */
         public Builder field(int bit, FieldConfig config) {
@@ -163,7 +162,8 @@ public final class IsoConfig {
         /** Sets the longest VBS record that will be accepted. */
         public Builder maxVbsRecordLength(int length) {
             if (length < 1) {
-                throw new IllegalArgumentException("Maximum record length must be positive: " + length);
+                throw new IllegalArgumentException(
+                        "Maximum record length must be positive: " + length);
             }
             this.maxVbsRecordLength = length;
             return this;

@@ -5,14 +5,13 @@ import java.util.Objects;
 /**
  * How one ISO 8583 data element is laid out and read.
  *
- * @param name            what the element is called, for humans
- * @param type            how the element's length is worked out
- * @param length          the fixed length, or the maximum length of a variable field
- * @param valueType       the Java type the text is turned into
- * @param dateFormat      the date pattern, in Python {@code strftime} form, used
- *                        when {@code valueType} is {@link ValueType#DATETIME};
- *                        {@code null} falls back to {@code %y%m%d}
- * @param processor       extra handling for the field
+ * @param name what the element is called, for humans
+ * @param type how the element's length is worked out
+ * @param length the fixed length, or the maximum length of a variable field
+ * @param valueType the Java type the text is turned into
+ * @param dateFormat the date pattern, in Python {@code strftime} form, used when {@code valueType}
+ *     is {@link ValueType#DATETIME}; {@code null} falls back to {@code %y%m%d}
+ * @param processor extra handling for the field
  * @param processorConfig settings for that handling; meaning depends on the processor
  */
 public record FieldConfig(

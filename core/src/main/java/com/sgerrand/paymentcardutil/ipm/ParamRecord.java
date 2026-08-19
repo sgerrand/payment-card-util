@@ -10,10 +10,10 @@ import java.util.Optional;
 /**
  * One row of an IPM parameter table.
  *
- * @param tableId            which table the row came from, such as {@code IP0040T1}
+ * @param tableId which table the row came from, such as {@code IP0040T1}
  * @param effectiveTimestamp when the row takes effect, as written in the file
  * @param activeInactiveCode whether the row is live
- * @param fields             the row's fields, in the order the table declares them
+ * @param fields the row's fields, in the order the table declares them
  */
 public record ParamRecord(
         String tableId,
@@ -22,11 +22,12 @@ public record ParamRecord(
         Map<String, String> fields) {
 
     /**
-     * The column names for the row's own details, ahead of the table's fields.
-     * Kept here so the CSV header {@link IpmParamReader#columnNames()} builds
-     * and the rows {@link #asMap()} builds cannot drift apart.
+     * The column names for the row's own details, ahead of the table's fields. Kept here so the CSV
+     * header {@link IpmParamReader#columnNames()} builds and the rows {@link #asMap()} builds
+     * cannot drift apart.
      */
-    static final List<String> DETAIL_COLUMNS = List.of("table_id", "effective_timestamp", "active_inactive_code");
+    static final List<String> DETAIL_COLUMNS =
+            List.of("table_id", "effective_timestamp", "active_inactive_code");
 
     public ParamRecord {
         Objects.requireNonNull(tableId, "tableId");
@@ -41,8 +42,8 @@ public record ParamRecord(
     }
 
     /**
-     * The row as a flat map, with the row's own details first. This is what the
-     * CSV tool writes out.
+     * The row as a flat map, with the row's own details first. This is what the CSV tool writes
+     * out.
      */
     public Map<String, String> asMap() {
         Map<String, String> all = new LinkedHashMap<>();

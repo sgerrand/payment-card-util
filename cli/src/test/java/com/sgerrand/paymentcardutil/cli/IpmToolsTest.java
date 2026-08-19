@@ -1,14 +1,14 @@
 package com.sgerrand.paymentcardutil.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.sgerrand.paymentcardutil.ipm.IpmReader;
 import com.sgerrand.paymentcardutil.ipm.IpmWriter;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import picocli.CommandLine;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -18,43 +18,40 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import picocli.CommandLine;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-/**
- * Drives the command line tools over real files.
- */
+/** Drives the command line tools over real files. */
 class IpmToolsTest {
 
-    @TempDir
-    Path directory;
+    @TempDir Path directory;
 
     private Path ipmFile;
 
-    private static final List<Iso8583Message> MESSAGES = List.of(
-            Iso8583Message.builder()
-                    .mti("1240")
-                    .de(2, "4444555566667777")
-                    .de(4, 12345L)
-                    .de(12, LocalDateTime.of(2020, 3, 4, 5, 6, 7))
-                    .de(37, "REF00000001")
-                    .pds(158, "0000000000")
-                    .build(),
-            Iso8583Message.builder()
-                    .mti("1644")
-                    .de(2, "5555444433332222")
-                    .de(4, 0L)
-                    .de(38, "AUTH01")
-                    .build());
+    private static final List<Iso8583Message> MESSAGES =
+            List.of(
+                    Iso8583Message.builder()
+                            .mti("1240")
+                            .de(2, "4444555566667777")
+                            .de(4, 12345L)
+                            .de(12, LocalDateTime.of(2020, 3, 4, 5, 6, 7))
+                            .de(37, "REF00000001")
+                            .pds(158, "0000000000")
+                            .build(),
+                    Iso8583Message.builder()
+                            .mti("1644")
+                            .de(2, "5555444433332222")
+                            .de(4, 0L)
+                            .de(38, "AUTH01")
+                            .build());
 
     @BeforeEach
     void writeIpmFile() throws IOException {
         ipmFile = directory.resolve("clearing.ipm");
         try (OutputStream out = Files.newOutputStream(ipmFile);
-             IpmWriter writer = IpmWriter.blocked(out)) {
+                IpmWriter writer = IpmWriter.blocked(out)) {
             writer.writeAll(MESSAGES);
         }
     }
@@ -96,21 +93,40 @@ class IpmToolsTest {
         Path masked = directory.resolve("marked-masked.csv");
         Path plain = directory.resolve("marked-plain.csv");
 
-        assertEquals(0, run("mci-ipm-to-csv", ipmFile.toString(), "-o", masked.toString(),
-                "--config-file", config.toString()));
-        assertEquals(0, run("mci-ipm-to-csv", ipmFile.toString(), "-o", plain.toString(),
-                "--unmask-pan", "--config-file", config.toString()));
+        assertEquals(
+                0,
+                run(
+                        "mci-ipm-to-csv",
+                        ipmFile.toString(),
+                        "-o",
+                        masked.toString(),
+                        "--config-file",
+                        config.toString()));
+        assertEquals(
+                0,
+                run(
+                        "mci-ipm-to-csv",
+                        ipmFile.toString(),
+                        "-o",
+                        plain.toString(),
+                        "--unmask-pan",
+                        "--config-file",
+                        config.toString()));
 
         String maskedText = Files.readString(masked);
         assertTrue(maskedText.contains("444455******7777"), maskedText);
         assertFalse(maskedText.contains("4444555566667777"), "the full number must not be written");
-        assertTrue(Files.readString(plain).contains("4444555566667777"), "--unmask-pan writes it in full");
+        assertTrue(
+                Files.readString(plain).contains("4444555566667777"),
+                "--unmask-pan writes it in full");
     }
 
     /** A layout naming the card number something else and marking it by processor. */
     private Path writeConfigMarkingTheCardNumber() throws IOException {
         Path config = directory.resolve("layout.json");
-        Files.writeString(config, """
+        Files.writeString(
+                config,
+                """
                 {
                   "bit_config": {
                     "2": {"field_name": "Card number", "field_type": "LLVAR",
@@ -146,21 +162,38 @@ class IpmToolsTest {
         run("mci-ipm-to-csv", ipmFile.toString(), "-o", csv.toString(), "--unmask-pan");
         assertEquals(0, run("mci-csv-to-ipm", csv.toString(), "-o", rebuilt.toString()));
 
-        assertEquals(readMessages(ipmFile, Iso8583Options.defaults(), true),
+        assertEquals(
+                readMessages(ipmFile, Iso8583Options.defaults(), true),
                 readMessages(rebuilt, Iso8583Options.defaults(), true));
     }
 
     @Test
     void encodeChangesCharacterSetAndBlocking() throws IOException {
         Path encoded = directory.resolve("encoded.ipm");
-        assertEquals(0, run("mci-ipm-encode", ipmFile.toString(), "-o", encoded.toString(),
-                "--in-encoding", "latin_1", "--out-encoding", "cp500", "--out-format", "VBS"));
+        assertEquals(
+                0,
+                run(
+                        "mci-ipm-encode",
+                        ipmFile.toString(),
+                        "-o",
+                        encoded.toString(),
+                        "--in-encoding",
+                        "latin_1",
+                        "--out-encoding",
+                        "cp500",
+                        "--out-format",
+                        "VBS"));
 
-        assertNotEquals(Files.readAllBytes(ipmFile).length, Files.readAllBytes(encoded).length,
+        assertNotEquals(
+                Files.readAllBytes(ipmFile).length,
+                Files.readAllBytes(encoded).length,
                 "dropping the blocking should change the size");
 
-        List<Iso8583Message> readBack = readMessages(
-                encoded, Iso8583Options.defaults().withCharset(Iso8583Options.EBCDIC_CP500), false);
+        List<Iso8583Message> readBack =
+                readMessages(
+                        encoded,
+                        Iso8583Options.defaults().withCharset(Iso8583Options.EBCDIC_CP500),
+                        false);
         assertEquals(MESSAGES.size(), readBack.size());
         assertEquals("4444555566667777", readBack.get(0).text(2).orElseThrow());
     }
@@ -168,22 +201,37 @@ class IpmToolsTest {
     @Test
     void encodeLeavesPrivateDataExactlyAsItWasRead() throws IOException {
         Path encoded = directory.resolve("encoded.ipm");
-        run("mci-ipm-encode", ipmFile.toString(), "-o", encoded.toString(),
-                "--in-encoding", "latin_1", "--out-encoding", "latin_1");
+        run(
+                "mci-ipm-encode",
+                ipmFile.toString(),
+                "-o",
+                encoded.toString(),
+                "--in-encoding",
+                "latin_1",
+                "--out-encoding",
+                "latin_1");
 
         List<Iso8583Message> original = readMessages(ipmFile, Iso8583Options.defaults(), true);
         List<Iso8583Message> copied = readMessages(encoded, Iso8583Options.defaults(), true);
-        assertEquals(original.get(0).text(48), copied.get(0).text(48), "DE48 carried across unchanged");
+        assertEquals(
+                original.get(0).text(48), copied.get(0).text(48), "DE48 carried across unchanged");
         assertEquals("0000000000", copied.get(0).pds(158).orElseThrow());
     }
 
     @Test
     void aFileThatIsNotIpmFailsWithAnExplanation() throws IOException {
         Path rubbish = directory.resolve("rubbish.bin");
-        Files.write(rubbish, "this is not an IPM file, not even close".getBytes(StandardCharsets.UTF_8));
+        Files.write(
+                rubbish,
+                "this is not an IPM file, not even close".getBytes(StandardCharsets.UTF_8));
 
-        assertNotEquals(0, run("mci-ipm-to-csv", rubbish.toString(),
-                "-o", directory.resolve("never.csv").toString()));
+        assertNotEquals(
+                0,
+                run(
+                        "mci-ipm-to-csv",
+                        rubbish.toString(),
+                        "-o",
+                        directory.resolve("never.csv").toString()));
     }
 
     @Test
@@ -195,8 +243,13 @@ class IpmToolsTest {
         java.util.Arrays.fill(record, 4, 44, (byte) 0xFF);
         Files.write(broken, record);
 
-        String errors = runCapturingErrors("mci-ipm-to-csv", broken.toString(),
-                "--no1014blocking", "-o", directory.resolve("never.csv").toString());
+        String errors =
+                runCapturingErrors(
+                        "mci-ipm-to-csv",
+                        broken.toString(),
+                        "--no1014blocking",
+                        "-o",
+                        directory.resolve("never.csv").toString());
 
         assertTrue(errors.contains("Processing stopped:"), errors);
         assertTrue(errors.contains("The trouble is in record 1."), errors);
@@ -213,31 +266,39 @@ class IpmToolsTest {
         byte[] record = new byte[4 + body.length + 16];
         record[3] = (byte) (body.length + 16);
         System.arraycopy(body, 0, record, 4, body.length);
-        record[4 + body.length] = (byte) 0x01;   // DE 8, which the layout has no entry for
+        record[4 + body.length] = (byte) 0x01; // DE 8, which the layout has no entry for
         Files.write(broken, record);
 
-        String errors = runCapturingErrors("mci-ipm-to-csv", broken.toString(),
-                "--no1014blocking", "--in-encoding", "cp500",
-                "-o", directory.resolve("never.csv").toString());
+        String errors =
+                runCapturingErrors(
+                        "mci-ipm-to-csv",
+                        broken.toString(),
+                        "--no1014blocking",
+                        "--in-encoding",
+                        "cp500",
+                        "-o",
+                        directory.resolve("never.csv").toString());
 
         assertTrue(errors.contains("read as IBM500"), errors);
-        assertTrue(errors.contains("1240"), "the text column should show the message type: " + errors);
+        assertTrue(
+                errors.contains("1240"), "the text column should show the message type: " + errors);
     }
 
     private static String runCapturingErrors(String... args) {
         java.io.StringWriter errors = new java.io.StringWriter();
-        CommandLine command = new CommandLine(new Cardutil())
-                .setExecutionExceptionHandler(new Cardutil.ErrorHandler())
-                .setErr(new java.io.PrintWriter(errors));
+        CommandLine command =
+                new CommandLine(new Cardutil())
+                        .setExecutionExceptionHandler(new Cardutil.ErrorHandler())
+                        .setErr(new java.io.PrintWriter(errors));
         assertNotEquals(0, command.execute(args));
         return errors.toString();
     }
 
-    private static List<Iso8583Message> readMessages(Path file, Iso8583Options options, boolean blocked)
-            throws IOException {
+    private static List<Iso8583Message> readMessages(
+            Path file, Iso8583Options options, boolean blocked) throws IOException {
         List<Iso8583Message> messages = new ArrayList<>();
         try (InputStream in = Files.newInputStream(file);
-             IpmReader reader = IpmReader.open(in, options, blocked)) {
+                IpmReader reader = IpmReader.open(in, options, blocked)) {
             reader.forEach(messages::add);
         }
         return messages;

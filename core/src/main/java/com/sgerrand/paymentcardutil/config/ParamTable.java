@@ -8,11 +8,11 @@ import java.util.Objects;
 /**
  * Where each field sits in a record of one IPM parameter table.
  *
- * <p>Fields are kept in the order they were declared, which is the order the
- * CSV tool writes its columns in.
+ * <p>Fields are kept in the order they were declared, which is the order the CSV tool writes its
+ * columns in.
  *
  * @param tableId the table this describes, such as {@code IP0040T1}
- * @param fields  field name to its position in the record
+ * @param fields field name to its position in the record
  */
 public record ParamTable(String tableId, Map<String, Position> fields) {
 
@@ -27,7 +27,7 @@ public record ParamTable(String tableId, Map<String, Position> fields) {
      * A half open range of character positions in a parameter record.
      *
      * @param start first character, counting from zero
-     * @param end   one past the last character
+     * @param end one past the last character
      */
     public record Position(int start, int end) {
 
@@ -36,7 +36,8 @@ public record ParamTable(String tableId, Map<String, Position> fields) {
                 throw new IllegalArgumentException("Start must not be negative: " + start);
             }
             if (end < start) {
-                throw new IllegalArgumentException("End (" + end + ") is before start (" + start + ")");
+                throw new IllegalArgumentException(
+                        "End (" + end + ") is before start (" + start + ")");
             }
         }
 

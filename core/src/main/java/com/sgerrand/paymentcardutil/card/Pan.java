@@ -3,9 +3,8 @@ package com.sgerrand.paymentcardutil.card;
 /**
  * A Primary Account Number: the number printed on a payment card.
  *
- * <p>A PAN is sensitive data. {@link #toString()} always masks it, so logging a
- * {@code Pan} by accident cannot leak the full number. Call {@link #digits()}
- * only where you need the real value.
+ * <p>A PAN is sensitive data. {@link #toString()} always masks it, so logging a {@code Pan} by
+ * accident cannot leak the full number. Call {@link #digits()} only where you need the real value.
  *
  * @param digits the full card number, 12 to 19 digits
  */
@@ -20,7 +19,12 @@ public record Pan(String digits) {
         }
         if (digits.length() < MIN_LENGTH || digits.length() > MAX_LENGTH) {
             throw new IllegalArgumentException(
-                    "PAN must be " + MIN_LENGTH + " to " + MAX_LENGTH + " digits, was " + digits.length());
+                    "PAN must be "
+                            + MIN_LENGTH
+                            + " to "
+                            + MAX_LENGTH
+                            + " digits, was "
+                            + digits.length());
         }
         for (int i = 0; i < digits.length(); i++) {
             char c = digits.charAt(i);
@@ -30,9 +34,7 @@ public record Pan(String digits) {
         }
     }
 
-    /**
-     * Builds a PAN from a string that may hold spaces or hyphens.
-     */
+    /** Builds a PAN from a string that may hold spaces or hyphens. */
     public static Pan parse(String text) {
         if (text == null) {
             throw new IllegalArgumentException("PAN must not be null");
@@ -69,8 +71,8 @@ public record Pan(String digits) {
     }
 
     /**
-     * The number with everything but the first six and last four digits
-     * replaced by {@code *}, as allowed by PCI DSS.
+     * The number with everything but the first six and last four digits replaced by {@code *}, as
+     * allowed by PCI DSS.
      */
     public String masked() {
         return maskDigits(digits);
@@ -79,14 +81,13 @@ public record Pan(String digits) {
     /**
      * Masks any run of digits, keeping the first six and last four.
      *
-     * <p>Unlike the rest of this class, nothing is checked: the input does not
-     * have to be a valid card number. A data element holds whatever the file
-     * holds, so the tools that write card numbers out call this rather than
-     * building a {@link Pan}.
+     * <p>Unlike the rest of this class, nothing is checked: the input does not have to be a valid
+     * card number. A data element holds whatever the file holds, so the tools that write card
+     * numbers out call this rather than building a {@link Pan}.
      *
      * @param digits the digits to mask
-     * @return the masked digits, or the input unchanged if it is 10 characters
-     *         or shorter, since there would be nothing left to hide
+     * @return the masked digits, or the input unchanged if it is 10 characters or shorter, since
+     *     there would be nothing left to hide
      */
     public static String maskDigits(String digits) {
         if (digits.length() <= 10) {

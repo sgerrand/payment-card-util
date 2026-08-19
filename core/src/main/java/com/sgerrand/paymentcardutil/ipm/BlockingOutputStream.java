@@ -7,10 +7,9 @@ import java.io.OutputStream;
 /**
  * Adds 1014 byte blocking to whatever is written through it.
  *
- * <p>Every {@value Blocking#DATA_SIZE} bytes of data are followed by two filler
- * bytes. Closing the stream fills the part-written block out to a whole block,
- * so the finished file is always a multiple of {@value Blocking#BLOCK_SIZE}
- * bytes.
+ * <p>Every {@value Blocking#DATA_SIZE} bytes of data are followed by two filler bytes. Closing the
+ * stream fills the part-written block out to a whole block, so the finished file is always a
+ * multiple of {@value Blocking#BLOCK_SIZE} bytes.
  */
 public final class BlockingOutputStream extends FilterOutputStream {
 
@@ -61,8 +60,8 @@ public final class BlockingOutputStream extends FilterOutputStream {
     /**
      * Fills the part-written block out to a whole block.
      *
-     * <p>Called by {@link #close()}. Calling it twice does nothing the second
-     * time, so a stream closed after an explicit finish is still well formed.
+     * <p>Called by {@link #close()}. Calling it twice does nothing the second time, so a stream
+     * closed after an explicit finish is still well formed.
      */
     public void finish() throws IOException {
         if (finished) {

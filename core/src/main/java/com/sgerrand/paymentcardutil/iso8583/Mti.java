@@ -1,12 +1,11 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
 /**
- * A Message Type Indicator: the four digits that start every ISO 8583 message
- * and say what the message is for.
+ * A Message Type Indicator: the four digits that start every ISO 8583 message and say what the
+ * message is for.
  *
- * <p>The four digits are, in order: version, message class, message function
- * and message origin. For example {@code 1240} is a version 1993 financial
- * presentment advice from an acquirer.
+ * <p>The four digits are, in order: version, message class, message function and message origin.
+ * For example {@code 1240} is a version 1993 financial presentment advice from an acquirer.
  *
  * @param digits the four MTI digits
  */

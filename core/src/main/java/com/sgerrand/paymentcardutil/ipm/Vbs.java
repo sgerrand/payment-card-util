@@ -1,26 +1,24 @@
 package com.sgerrand.paymentcardutil.ipm;
 
 /**
- * The 4 byte length that sits in front of every record in a variable blocked
- * file, most significant byte first.
+ * The 4 byte length that sits in front of every record in a variable blocked file, most significant
+ * byte first.
  *
- * <p>Kept in one place so the reader, the writer and the file sniffer cannot
- * drift apart on the byte order.
+ * <p>Kept in one place so the reader, the writer and the file sniffer cannot drift apart on the
+ * byte order.
  */
 final class Vbs {
 
     /** Bytes of length in front of each record. */
     static final int LENGTH_PREFIX = 4;
 
-    private Vbs() {
-    }
+    private Vbs() {}
 
     /**
      * Reads a record length.
      *
-     * <p>Returned as a {@code long} because a damaged file can claim a length
-     * with the top bit set, which is not a length any caller should see as
-     * negative.
+     * <p>Returned as a {@code long} because a damaged file can claim a length with the top bit set,
+     * which is not a length any caller should see as negative.
      *
      * @param from where the 4 length bytes start
      */
@@ -35,10 +33,8 @@ final class Vbs {
     /** Writes a record length. */
     static byte[] lengthPrefix(int length) {
         return new byte[] {
-                (byte) (length >>> 24),
-                (byte) (length >>> 16),
-                (byte) (length >>> 8),
-                (byte) length};
+            (byte) (length >>> 24), (byte) (length >>> 16), (byte) (length >>> 8), (byte) length
+        };
     }
 
     /** A record with its length prefix back on the front. */

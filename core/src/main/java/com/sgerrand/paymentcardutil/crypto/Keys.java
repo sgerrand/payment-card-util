@@ -5,14 +5,12 @@ import java.util.HexFormat;
 /**
  * Building and checking payment keys.
  *
- * <p>A zone master key is not handed over in one piece. It is split into
- * components, each given to a different person, and only becomes a key when
- * they are combined. Combining is a bitwise exclusive or, so no one component
- * reveals anything about the result.
+ * <p>A zone master key is not handed over in one piece. It is split into components, each given to
+ * a different person, and only becomes a key when they are combined. Combining is a bitwise
+ * exclusive or, so no one component reveals anything about the result.
  *
- * <p>A key check value proves two parties hold the same key without either
- * showing it: encrypt a block of zeroes under the key and compare the first few
- * digits.
+ * <p>A key check value proves two parties hold the same key without either showing it: encrypt a
+ * block of zeroes under the key and compare the first few digits.
  */
 public final class Keys {
 
@@ -24,16 +22,15 @@ public final class Keys {
 
     private static final HexFormat HEX = HexFormat.of();
 
-    private Keys() {
-    }
+    private Keys() {}
 
     /**
      * Combines key components into a clear key.
      *
      * @param components each component as hex, all the same length
      * @return the combined key as lower case hex
-     * @throws IllegalArgumentException if no components are given, or they are
-     *                                  not all the same length
+     * @throws IllegalArgumentException if no components are given, or they are not all the same
+     *     length
      */
     public static String zoneMasterKey(String... components) {
         if (components.length == 0) {
@@ -54,8 +51,7 @@ public final class Keys {
     }
 
     /**
-     * The key check value of a key: the start of a block of zeroes encrypted
-     * under it.
+     * The key check value of a key: the start of a block of zeroes encrypted under it.
      *
      * @param key the key as hex
      */
@@ -66,7 +62,7 @@ public final class Keys {
     /**
      * The key check value of a key, to a given number of hex digits.
      *
-     * @param key    the key as hex
+     * @param key the key as hex
      * @param length how many hex digits to return
      */
     public static String keyCheckValue(String key, int length) {
@@ -82,23 +78,27 @@ public final class Keys {
      * Encrypts one key under another, for sending it somewhere.
      *
      * @param keyToEncrypt the key being sent, as hex
-     * @param masterKey    the key it travels under, as hex
+     * @param masterKey the key it travels under, as hex
      * @return the encrypted key as lower case hex
      */
     public static String encryptKey(String keyToEncrypt, String masterKey) {
-        return hex(DesKeys.tripleDesEncrypt(
-                parseHex(masterKey, "master key"), parseHex(keyToEncrypt, "key to encrypt")));
+        return hex(
+                DesKeys.tripleDesEncrypt(
+                        parseHex(masterKey, "master key"),
+                        parseHex(keyToEncrypt, "key to encrypt")));
     }
 
     /** Undoes {@link #encryptKey}. */
     public static String decryptKey(String encryptedKey, String masterKey) {
-        return hex(DesKeys.tripleDesDecrypt(
-                parseHex(masterKey, "master key"), parseHex(encryptedKey, "encrypted key")));
+        return hex(
+                DesKeys.tripleDesDecrypt(
+                        parseHex(masterKey, "master key"),
+                        parseHex(encryptedKey, "encrypted key")));
     }
 
     /**
-     * Combines components and encrypts the result under a master key, which is
-     * how a zone master key is normally loaded.
+     * Combines components and encrypts the result under a master key, which is how a zone master
+     * key is normally loaded.
      *
      * @return the encrypted key and its check value
      */
@@ -108,14 +108,12 @@ public final class Keys {
     }
 
     /**
-     * A key ready to be sent somewhere, with the check value that proves it
-     * arrived intact.
+     * A key ready to be sent somewhere, with the check value that proves it arrived intact.
      *
-     * @param encryptedKey  the key, encrypted under a master key, as hex
+     * @param encryptedKey the key, encrypted under a master key, as hex
      * @param keyCheckValue the check value of the clear key
      */
-    public record EncryptedKey(String encryptedKey, String keyCheckValue) {
-    }
+    public record EncryptedKey(String encryptedKey, String keyCheckValue) {}
 
     private static byte[] parseHex(String value, String what) {
         try {

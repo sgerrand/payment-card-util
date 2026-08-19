@@ -1,20 +1,20 @@
 package com.sgerrand.paymentcardutil.crypto;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Triple DES and AES in ECB mode, as payment key handling uses them.
  *
- * <p>Payment systems quote Triple DES keys as 16 hex bytes, meaning a two key
- * bundle where the third key repeats the first. Java wants all 24 bytes, so a
- * 16 byte key is stretched here before use.
+ * <p>Payment systems quote Triple DES keys as 16 hex bytes, meaning a two key bundle where the
+ * third key repeats the first. Java wants all 24 bytes, so a 16 byte key is stretched here before
+ * use.
  *
- * <p>ECB with no padding is what the standards specify for these operations. It
- * is the right mode for encrypting a single fixed size block such as a pin
- * block or a key, and the wrong mode for anything longer.
+ * <p>ECB with no padding is what the standards specify for these operations. It is the right mode
+ * for encrypting a single fixed size block such as a pin block or a key, and the wrong mode for
+ * anything longer.
  */
 public final class DesKeys {
 
@@ -29,8 +29,7 @@ public final class DesKeys {
     /** Bytes in the three key bundle Java wants. */
     public static final int TDES_THREE_KEY_LENGTH = 24;
 
-    private DesKeys() {
-    }
+    private DesKeys() {}
 
     /** Encrypts with Triple DES. */
     public static byte[] tripleDesEncrypt(byte[] key, byte[] data) {
@@ -55,8 +54,8 @@ public final class DesKeys {
     /**
      * Turns a quoted Triple DES key into the 24 bytes Java wants.
      *
-     * @param key 16 or 24 bytes. 16 means a two key bundle, where the first 8
-     *            bytes are repeated on the end
+     * @param key 16 or 24 bytes. 16 means a two key bundle, where the first 8 bytes are repeated on
+     *     the end
      * @throws IllegalArgumentException if the key is any other length
      */
     static SecretKeySpec tripleDesKey(byte[] key) {

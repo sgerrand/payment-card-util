@@ -1,13 +1,9 @@
 package com.sgerrand.paymentcardutil.card;
 
-/**
- * The Luhn check digit algorithm (ISO/IEC 7812-1), used to catch typing errors
- * in card numbers.
- */
+/** The Luhn check digit algorithm (ISO/IEC 7812-1), used to catch typing errors in card numbers. */
 public final class Luhn {
 
-    private Luhn() {
-    }
+    private Luhn() {}
 
     /**
      * Returns {@code true} if the digits pass the Luhn check.
@@ -33,12 +29,10 @@ public final class Luhn {
     }
 
     /**
-     * The Luhn sum: right to left, every other digit doubled and folded back
-     * under ten.
+     * The Luhn sum: right to left, every other digit doubled and folded back under ten.
      *
-     * @param startDoubling whether the rightmost digit is one of the doubled
-     *                      ones. It is when working out a check digit, and is
-     *                      not when checking a number that already has one
+     * @param startDoubling whether the rightmost digit is one of the doubled ones. It is when
+     *     working out a check digit, and is not when checking a number that already has one
      */
     private static int sum(String digits, boolean startDoubling) {
         int sum = 0;

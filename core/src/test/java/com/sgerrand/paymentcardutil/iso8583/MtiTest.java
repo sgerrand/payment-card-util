@@ -1,13 +1,11 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/**
- * The four digits that start a message, and what each of them means.
- */
+import org.junit.jupiter.api.Test;
+
+/** The four digits that start a message, and what each of them means. */
 class MtiTest {
 
     @Test

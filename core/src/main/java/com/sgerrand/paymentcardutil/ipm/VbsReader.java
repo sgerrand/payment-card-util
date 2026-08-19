@@ -1,7 +1,6 @@
 package com.sgerrand.paymentcardutil.ipm;
 
 import com.sgerrand.paymentcardutil.config.IsoConfig;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,8 +10,8 @@ import java.util.Iterator;
 /**
  * Reads the records out of a variable blocked (VBS) file.
  *
- * <p>Each record is a 4 byte length, most significant byte first, then that many
- * bytes of data. A length of zero marks the end of the file.
+ * <p>Each record is a 4 byte length, most significant byte first, then that many bytes of data. A
+ * length of zero marks the end of the file.
  *
  * <pre>{@code
  * try (VbsReader reader = VbsReader.blocked(Files.newInputStream(path))) {
@@ -22,7 +21,8 @@ import java.util.Iterator;
  * }
  * }</pre>
  */
-public final class VbsReader extends LookAheadIterator<byte[]> implements Iterable<byte[]>, Closeable {
+public final class VbsReader extends LookAheadIterator<byte[]>
+        implements Iterable<byte[]>, Closeable {
 
     private final InputStream in;
     private final int maxRecordLength;
@@ -48,7 +48,8 @@ public final class VbsReader extends LookAheadIterator<byte[]> implements Iterab
 
     /** Reads a file in 1014 byte blocks. */
     public static VbsReader blocked(InputStream in) {
-        return new VbsReader(new UnblockingInputStream(in), IsoConfig.DEFAULT_MAX_VBS_RECORD_LENGTH);
+        return new VbsReader(
+                new UnblockingInputStream(in), IsoConfig.DEFAULT_MAX_VBS_RECORD_LENGTH);
     }
 
     /** Reads a file in 1014 byte blocks, with a record length limit from the config. */
@@ -56,16 +57,14 @@ public final class VbsReader extends LookAheadIterator<byte[]> implements Iterab
         return new VbsReader(new UnblockingInputStream(in), config.maxVbsRecordLength());
     }
 
-    /**
-     * Which record was read last, counting from 1. Zero before the first read.
-     */
+    /** Which record was read last, counting from 1. Zero before the first read. */
     public int recordNumber() {
         return recordNumber;
     }
 
     /**
-     * The record read last, with its length prefix still on the front. Useful
-     * for reporting a bad record back to whoever sent the file.
+     * The record read last, with its length prefix still on the front. Useful for reporting a bad
+     * record back to whoever sent the file.
      */
     public byte[] lastRecord() {
         // Joined only when someone asks, which is on the error path. Keeping a
@@ -91,7 +90,7 @@ public final class VbsReader extends LookAheadIterator<byte[]> implements Iterab
 
     /**
      * @return the next record, or {@code null} at the end of the file
-     * @throws IpmDataException  if the framing does not add up
+     * @throws IpmDataException if the framing does not add up
      * @throws UncheckedIOException if the stream fails
      */
     @Override
@@ -108,9 +107,14 @@ public final class VbsReader extends LookAheadIterator<byte[]> implements Iterab
 
             if (length > maxRecordLength) {
                 throw new IpmDataException(
-                        "Record is " + length + " bytes, past the " + maxRecordLength
+                        "Record is "
+                                + length
+                                + " bytes, past the "
+                                + maxRecordLength
                                 + " byte limit, which usually means the file is not what it claims to be",
-                        lengthBytes, recordNumber + 1, null);
+                        lengthBytes,
+                        recordNumber + 1,
+                        null);
             }
             if (length == 0) {
                 return null;
@@ -120,8 +124,14 @@ public final class VbsReader extends LookAheadIterator<byte[]> implements Iterab
             if (record.length != length) {
                 byte[] context = Vbs.withPrefix(lengthBytes, record);
                 throw new IpmDataException(
-                        "Record says it is " + length + " bytes, but only " + record.length + " could be read",
-                        context, recordNumber + 1, null);
+                        "Record says it is "
+                                + length
+                                + " bytes, but only "
+                                + record.length
+                                + " could be read",
+                        context,
+                        recordNumber + 1,
+                        null);
             }
 
             recordNumber++;

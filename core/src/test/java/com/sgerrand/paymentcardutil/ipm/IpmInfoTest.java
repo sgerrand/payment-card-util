@@ -1,34 +1,32 @@
 package com.sgerrand.paymentcardutil.ipm;
 
-import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
-import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
-import org.junit.jupiter.api.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Checks what can be told about a file by looking at the start of it.
- */
+import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
+import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.Test;
+
+/** Checks what can be told about a file by looking at the start of it. */
 class IpmInfoTest {
 
-    private static final Iso8583Message MESSAGE = Iso8583Message.builder()
-            .mti("1240")
-            .de(2, "4444555566667777")
-            .de(37, "REFERENCE001")
-            .build();
+    private static final Iso8583Message MESSAGE =
+            Iso8583Message.builder()
+                    .mti("1240")
+                    .de(2, "4444555566667777")
+                    .de(37, "REFERENCE001")
+                    .build();
 
     /** Builds a file big enough to see more than one block of. */
     private static byte[] file(Charset charset, boolean blocked) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (IpmWriter writer = IpmWriter.open(
-                out, Iso8583Options.defaults().withCharset(charset), blocked)) {
+        try (IpmWriter writer =
+                IpmWriter.open(out, Iso8583Options.defaults().withCharset(charset), blocked)) {
             for (int i = 0; i < 60; i++) {
                 writer.write(MESSAGE);
             }

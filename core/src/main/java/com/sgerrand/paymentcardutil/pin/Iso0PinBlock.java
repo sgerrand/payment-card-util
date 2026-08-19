@@ -1,15 +1,14 @@
 package com.sgerrand.paymentcardutil.pin;
 
 import com.sgerrand.paymentcardutil.crypto.DesKeys;
-
 import java.util.HexFormat;
 
 /**
  * ISO 9564-1 format 0, also called ANSI X9.8, Visa-1 and ECI-0.
  *
- * <p>The block is eight bytes: the pin, padded with {@code F}, mixed by
- * exclusive or with twelve digits of the card number. Because the card number
- * goes in, the same pin on two different cards gives two different blocks.
+ * <p>The block is eight bytes: the pin, padded with {@code F}, mixed by exclusive or with twelve
+ * digits of the card number. Because the card number goes in, the same pin on two different cards
+ * gives two different blocks.
  *
  * <pre>
  * P1 = LLPPPPFFFFFFFFFF     L = pin length, P = pin, F = filler x'F'
@@ -17,13 +16,12 @@ import java.util.HexFormat;
  * block = P1 XOR P2
  * </pre>
  *
- * <p>Unwrapping the block needs the same card number that went in, so
- * {@link #fromBytes} asks for it.
+ * <p>Unwrapping the block needs the same card number that went in, so {@link #fromBytes} asks for
+ * it.
  *
- * <p>The pin length goes in as a single hex digit, so a 12 digit pin writes
- * {@code C}. cardutil writes it as decimal text instead, which pushes the rest
- * of the block along and produces a block no reader can make sense of. Pins of
- * 10 digits or more are the only case where the two disagree.
+ * <p>The pin length goes in as a single hex digit, so a 12 digit pin writes {@code C}. cardutil
+ * writes it as decimal text instead, which pushes the rest of the block along and produces a block
+ * no reader can make sense of. Pins of 10 digits or more are the only case where the two disagree.
  */
 public final class Iso0PinBlock implements PinBlock {
 
@@ -36,7 +34,7 @@ public final class Iso0PinBlock implements PinBlock {
     private final String cardNumber;
 
     /**
-     * @param pin        the pin, 4 to 12 digits
+     * @param pin the pin, 4 to 12 digits
      * @param cardNumber the full card number, check digit included
      */
     public Iso0PinBlock(String pin, String cardNumber) {
@@ -47,7 +45,7 @@ public final class Iso0PinBlock implements PinBlock {
     /**
      * Reads a pin back out of a block.
      *
-     * @param block      the eight block bytes
+     * @param block the eight block bytes
      * @param cardNumber the card number the block was built with
      */
     public static Iso0PinBlock fromBytes(byte[] block, String cardNumber) {
@@ -68,10 +66,11 @@ public final class Iso0PinBlock implements PinBlock {
      * Reads a pin out of an encrypted block.
      *
      * @param encryptedBlock the encrypted block
-     * @param cardNumber     the card number the block was built with
-     * @param key            the pin protection key, as hex
+     * @param cardNumber the card number the block was built with
+     * @param key the pin protection key, as hex
      */
-    public static Iso0PinBlock fromEncryptedBytes(byte[] encryptedBlock, String cardNumber, String key) {
+    public static Iso0PinBlock fromEncryptedBytes(
+            byte[] encryptedBlock, String cardNumber, String key) {
         return fromBytes(DesKeys.tripleDesDecrypt(HEX.parseHex(key), encryptedBlock), cardNumber);
     }
 
@@ -99,7 +98,7 @@ public final class Iso0PinBlock implements PinBlock {
     /**
      * A Visa pin verification value for this pin and card.
      *
-     * @param pvvKey   the pin verification key, as hex
+     * @param pvvKey the pin verification key, as hex
      * @param keyIndex which pin verification key was used
      */
     public String toPvv(String pvvKey, int keyIndex) {

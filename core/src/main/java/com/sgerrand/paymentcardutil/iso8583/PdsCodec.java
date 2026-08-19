@@ -9,9 +9,8 @@ import java.util.TreeMap;
 /**
  * Packs and unpacks Mastercard private data subelements.
  *
- * <p>A PDS is a four digit tag, a three digit length, then that many characters
- * of data. Several are packed one after another into a data element such as
- * DE 48.
+ * <p>A PDS is a four digit tag, a three digit length, then that many characters of data. Several
+ * are packed one after another into a data element such as DE 48.
  */
 final class PdsCodec {
 
@@ -24,8 +23,7 @@ final class PdsCodec {
     /** Longest a packed group may be before it spills into the next data element. */
     static final int MAX_GROUP_LENGTH = 999;
 
-    private PdsCodec() {
-    }
+    private PdsCodec() {}
 
     /**
      * Reads the subelements packed into one data element.
@@ -50,12 +48,19 @@ final class PdsCodec {
             try {
                 length = Integer.parseInt(lengthText.trim());
             } catch (NumberFormatException e) {
-                throw new Iso8583Exception("PDS" + tag + " has a length that is not a number: " + lengthText, e);
+                throw new Iso8583Exception(
+                        "PDS" + tag + " has a length that is not a number: " + lengthText, e);
             }
             if (length < 0 || headerEnd + length > fieldData.length()) {
                 throw new Iso8583Exception(
-                        "PDS" + tag + " says it is " + length + " characters, "
-                                + "but only " + (fieldData.length() - headerEnd) + " remain");
+                        "PDS"
+                                + tag
+                                + " says it is "
+                                + length
+                                + " characters, "
+                                + "but only "
+                                + (fieldData.length() - headerEnd)
+                                + " remain");
             }
             values.put("PDS" + tag, fieldData.substring(headerEnd, headerEnd + length));
             pointer = headerEnd + length;
@@ -64,23 +69,22 @@ final class PdsCodec {
     }
 
     /**
-     * Packs every {@code PDSxxxx} value in a message into groups, each short
-     * enough to fit one data element.
+     * Packs every {@code PDSxxxx} value in a message into groups, each short enough to fit one data
+     * element.
      *
-     * <p>Tags are packed in ascending order. A group is closed off once adding
-     * the next subelement would take it past {@value #MAX_GROUP_LENGTH}
-     * characters.
+     * <p>Tags are packed in ascending order. A group is closed off once adding the next subelement
+     * would take it past {@value #MAX_GROUP_LENGTH} characters.
      *
-     * @return one string per data element needed, or an empty list if the
-     *         message has no PDS values
+     * @return one string per data element needed, or an empty list if the message has no PDS values
      */
     static List<String> pack(Map<String, Object> messageValues) {
         Map<String, Object> pdsValues = new TreeMap<>();
-        messageValues.forEach((key, value) -> {
-            if (key.startsWith("PDS")) {
-                pdsValues.put(key, value);
-            }
-        });
+        messageValues.forEach(
+                (key, value) -> {
+                    if (key.startsWith("PDS")) {
+                        pdsValues.put(key, value);
+                    }
+                });
         if (pdsValues.isEmpty()) {
             return List.of();
         }
@@ -95,8 +99,12 @@ final class PdsCodec {
                 // cardutil emits an empty group here, which the writer then drops
                 // as a falsy value, losing the data without saying so. Fail instead.
                 throw new Iso8583Exception(
-                        entry.getKey() + " is " + value.length() + " characters, too long to pack into a "
-                                + MAX_GROUP_LENGTH + " character data element");
+                        entry.getKey()
+                                + " is "
+                                + value.length()
+                                + " characters, too long to pack into a "
+                                + MAX_GROUP_LENGTH
+                                + " character data element");
             }
             String packed = "%04d%03d%s".formatted(tag, value.length(), value);
 

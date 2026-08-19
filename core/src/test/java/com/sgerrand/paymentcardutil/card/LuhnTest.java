@@ -1,17 +1,23 @@
 package com.sgerrand.paymentcardutil.card;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 class LuhnTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"4111111111111111", "5555555555554444", "378282246310005", "6011111111111117"})
+    @ValueSource(
+            strings = {
+                "4111111111111111",
+                "5555555555554444",
+                "378282246310005",
+                "6011111111111117"
+            })
     void acceptsKnownGoodNumbers(String digits) {
         assertTrue(Luhn.isValid(digits));
     }

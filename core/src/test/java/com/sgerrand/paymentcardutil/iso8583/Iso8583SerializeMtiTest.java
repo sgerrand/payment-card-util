@@ -1,20 +1,19 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
-import org.junit.jupiter.api.Test;
-
-import java.nio.charset.StandardCharsets;
-
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.Test;
+
 /**
- * The message type indicator sits in front of the bitmap, so a missing or short
- * one shifts the whole record along and nothing can read it back.
+ * The message type indicator sits in front of the bitmap, so a missing or short one shifts the
+ * whole record along and nothing can read it back.
  *
- * <p>cardutil 0.7.3 writes such a record anyway, and then fails on its own
- * output with "Failed decoding MTI field". This port refuses to write it, which
- * is one of the divergences listed in the README.
+ * <p>cardutil 0.7.3 writes such a record anyway, and then fails on its own output with "Failed
+ * decoding MTI field". This port refuses to write it, which is one of the divergences listed in the
+ * README.
  */
 class Iso8583SerializeMtiTest {
 
@@ -25,7 +24,8 @@ class Iso8583SerializeMtiTest {
     @Test
     void aMessageWithNoMtiIsRefused() {
         Iso8583Message message = message().build();
-        Iso8583Exception thrown = assertThrows(Iso8583Exception.class, () -> Iso8583.serialize(message));
+        Iso8583Exception thrown =
+                assertThrows(Iso8583Exception.class, () -> Iso8583.serialize(message));
         assertEquals("The message has no message type indicator", thrown.getMessage());
     }
 
@@ -62,9 +62,9 @@ class Iso8583SerializeMtiTest {
     }
 
     /**
-     * Anything {@link Iso8583#parse} accepts has to write back, or reading a
-     * file and writing it out again would stop working. Parsing takes four
-     * characters that are a number once trimmed, so serializing must too.
+     * Anything {@link Iso8583#parse} accepts has to write back, or reading a file and writing it
+     * out again would stop working. Parsing takes four characters that are a number once trimmed,
+     * so serializing must too.
      */
     @Test
     void anMtiThatParseAcceptsCanBeWrittenBack() {

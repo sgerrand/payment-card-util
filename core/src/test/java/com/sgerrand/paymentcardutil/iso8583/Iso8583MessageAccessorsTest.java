@@ -1,36 +1,35 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
-import org.junit.jupiter.api.Test;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.HexFormat;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.HexFormat;
+import org.junit.jupiter.api.Test;
+
 /**
  * The typed accessors over a message's values.
  *
- * <p>A message is a map of string keys underneath, which is what keeps parity
- * with cardutil. These are what a caller is meant to use instead of reaching
- * into the map and guessing at the type.
+ * <p>A message is a map of string keys underneath, which is what keeps parity with cardutil. These
+ * are what a caller is meant to use instead of reaching into the map and guessing at the type.
  */
 class Iso8583MessageAccessorsTest {
 
-    private static final Iso8583Message MESSAGE = Iso8583Message.builder()
-            .mti("1240")
-            .de(2, "4444555566667777")
-            .de(4, 12345L)
-            .de(5, new BigDecimal("123.45"))
-            .de(12, LocalDateTime.of(2020, 3, 4, 5, 6, 7))
-            .de(37, "REF00000001")
-            .de(55, HexFormat.of().parseHex("9f0206000000001000"))
-            .put("TAG9F02", "000000001000")
-            .pds(158, "0000000000")
-            .build();
+    private static final Iso8583Message MESSAGE =
+            Iso8583Message.builder()
+                    .mti("1240")
+                    .de(2, "4444555566667777")
+                    .de(4, 12345L)
+                    .de(5, new BigDecimal("123.45"))
+                    .de(12, LocalDateTime.of(2020, 3, 4, 5, 6, 7))
+                    .de(37, "REF00000001")
+                    .de(55, HexFormat.of().parseHex("9f0206000000001000"))
+                    .put("TAG9F02", "000000001000")
+                    .pds(158, "0000000000")
+                    .build();
 
     @Test
     void saysWhichDataElementsAreThere() {

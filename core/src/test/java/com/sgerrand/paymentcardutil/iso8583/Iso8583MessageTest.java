@@ -1,18 +1,17 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.HexFormat;
-import java.util.Map;
-import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HexFormat;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+
 /**
- * Checks the value semantics of a message, which chip data makes awkward: DE 55
- * is held as a {@code byte[]}, and arrays compare by identity.
+ * Checks the value semantics of a message, which chip data makes awkward: DE 55 is held as a {@code
+ * byte[]}, and arrays compare by identity.
  */
 class Iso8583MessageTest {
 
@@ -60,7 +59,8 @@ class Iso8583MessageTest {
         Iso8583Message two = Iso8583Message.builder().mti("1240").de(2, "4444555566667777").build();
         assertEquals(one, two);
         assertEquals(one.hashCode(), two.hashCode());
-        assertNotEquals(one, Iso8583Message.builder().mti("1240").de(2, "4444555566667778").build());
+        assertNotEquals(
+                one, Iso8583Message.builder().mti("1240").de(2, "4444555566667778").build());
     }
 
     @Test

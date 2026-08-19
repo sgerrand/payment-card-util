@@ -1,8 +1,6 @@
 package com.sgerrand.paymentcardutil.config;
 
-/**
- * How a data element's length is worked out when reading a message.
- */
+/** How a data element's length is worked out when reading a message. */
 public enum FieldType {
 
     /** The field is always {@link FieldConfig#length()} bytes long. */

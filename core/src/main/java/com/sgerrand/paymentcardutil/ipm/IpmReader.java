@@ -4,7 +4,6 @@ import com.sgerrand.paymentcardutil.PaymentCardException;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,11 +21,12 @@ import java.util.NoSuchElementException;
  * }
  * }</pre>
  *
- * <p>Use {@link #of} for a file with no blocking, and pass
- * {@link Iso8583Options} for a file in EBCDIC or with a different layout.
- * {@link IpmInfo#inspect} can work out both from the file itself.
+ * <p>Use {@link #of} for a file with no blocking, and pass {@link Iso8583Options} for a file in
+ * EBCDIC or with a different layout. {@link IpmInfo#inspect} can work out both from the file
+ * itself.
  */
-public final class IpmReader implements Iterable<Iso8583Message>, Iterator<Iso8583Message>, Closeable {
+public final class IpmReader
+        implements Iterable<Iso8583Message>, Iterator<Iso8583Message>, Closeable {
 
     private final VbsReader records;
     private final Iso8583Options options;
@@ -59,8 +59,7 @@ public final class IpmReader implements Iterable<Iso8583Message>, Iterator<Iso85
     /**
      * Reads a file, blocked or not as {@code blocked} says.
      *
-     * <p>Handy after {@link IpmInfo#inspect}, which works the answer out from
-     * the file.
+     * <p>Handy after {@link IpmInfo#inspect}, which works the answer out from the file.
      */
     public static IpmReader open(InputStream in, Iso8583Options options, boolean blocked) {
         return blocked ? blocked(in, options) : of(in, options);
@@ -90,7 +89,9 @@ public final class IpmReader implements Iterable<Iso8583Message>, Iterator<Iso85
         } catch (PaymentCardException e) {
             throw new IpmDataException(
                     "Cannot read the ISO 8583 message in this record",
-                    records.lastRecord(), records.recordNumber(), e);
+                    records.lastRecord(),
+                    records.recordNumber(),
+                    e);
         }
     }
 

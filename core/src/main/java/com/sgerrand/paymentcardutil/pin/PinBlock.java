@@ -3,9 +3,8 @@ package com.sgerrand.paymentcardutil.pin;
 /**
  * A pin wrapped up in one of the standard block formats, ready to be encrypted.
  *
- * <p>A pin is never sent on its own. It is padded and mixed with other data
- * into a fixed size block, so that the same pin does not always produce the
- * same ciphertext.
+ * <p>A pin is never sent on its own. It is padded and mixed with other data into a fixed size
+ * block, so that the same pin does not always produce the same ciphertext.
  *
  * @see Iso0PinBlock ISO 9564 format 0
  * @see Iso4PinBlock ISO 9564 format 4

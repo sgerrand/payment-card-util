@@ -1,8 +1,6 @@
 package com.sgerrand.paymentcardutil.pin;
 
-/**
- * Checks shared by the pin block formats.
- */
+/** Checks shared by the pin block formats. */
 final class Pins {
 
     /** Shortest pin the block formats allow. */
@@ -11,8 +9,7 @@ final class Pins {
     /** Longest pin the block formats allow. */
     static final int MAX_PIN_LENGTH = 12;
 
-    private Pins() {
-    }
+    private Pins() {}
 
     /**
      * @throws IllegalArgumentException if the pin is not 4 to 12 digits
@@ -23,15 +20,19 @@ final class Pins {
         }
         if (pin.length() < MIN_PIN_LENGTH || pin.length() > MAX_PIN_LENGTH) {
             throw new IllegalArgumentException(
-                    "A pin is " + MIN_PIN_LENGTH + " to " + MAX_PIN_LENGTH + " digits, was " + pin.length());
+                    "A pin is "
+                            + MIN_PIN_LENGTH
+                            + " to "
+                            + MAX_PIN_LENGTH
+                            + " digits, was "
+                            + pin.length());
         }
         requireDigits(pin, "pin");
         return pin;
     }
 
     /**
-     * @throws IllegalArgumentException if the card number is too short to build
-     *                                  a pin block from
+     * @throws IllegalArgumentException if the card number is too short to build a pin block from
      */
     static String checkCardNumber(String cardNumber) {
         if (cardNumber == null) {
@@ -46,16 +47,18 @@ final class Pins {
     }
 
     /**
-     * The last {@code count} digits of the card number, not counting the check
-     * digit. This is the part that goes into a pin block or a verification
-     * value.
+     * The last {@code count} digits of the card number, not counting the check digit. This is the
+     * part that goes into a pin block or a verification value.
      */
     static String rightmostBeforeCheckDigit(String cardNumber, int count) {
         int end = cardNumber.length() - 1;
         int start = end - count;
         if (start < 0) {
             throw new IllegalArgumentException(
-                    "The card number needs at least " + (count + 1) + " digits, has " + cardNumber.length());
+                    "The card number needs at least "
+                            + (count + 1)
+                            + " digits, has "
+                            + cardNumber.length());
         }
         return cardNumber.substring(start, end);
     }

@@ -11,28 +11,26 @@ import java.util.Optional;
 import java.util.TreeSet;
 
 /**
- * One ISO 8583 message, held as its data elements and any subfields pulled out
- * of them.
+ * One ISO 8583 message, held as its data elements and any subfields pulled out of them.
  *
- * <p>Values are keyed the same way as in cardutil, so a message read here and a
- * message read there hold the same keys:
+ * <p>Values are keyed the same way as in cardutil, so a message read here and a message read there
+ * hold the same keys:
  *
  * <ul>
- *   <li>{@code MTI} - the message type indicator</li>
- *   <li>{@code DE1} to {@code DE127} - data elements</li>
- *   <li>{@code PDSxxxx} - Mastercard private data subelements</li>
- *   <li>{@code TAGxxxx} and {@code ICC_DATA} - chip data from DE 55</li>
- *   <li>{@code DE43_NAME}, {@code DE43_SUBURB} and friends - parts of DE 43</li>
+ *   <li>{@code MTI} - the message type indicator
+ *   <li>{@code DE1} to {@code DE127} - data elements
+ *   <li>{@code PDSxxxx} - Mastercard private data subelements
+ *   <li>{@code TAGxxxx} and {@code ICC_DATA} - chip data from DE 55
+ *   <li>{@code DE43_NAME}, {@code DE43_SUBURB} and friends - parts of DE 43
  * </ul>
  *
- * <p>Prefer the typed accessors ({@link #text}, {@link #number}, {@link #pds})
- * over {@link #values()}; the map is there for CSV output and for code coming
- * across from cardutil.
+ * <p>Prefer the typed accessors ({@link #text}, {@link #number}, {@link #pds}) over {@link
+ * #values()}; the map is there for CSV output and for code coming across from cardutil.
  *
- * <p>Instances are immutable. Build one with {@link #builder()}, or change a
- * copy with {@link #toBuilder()}. Chip data is the one value held as a
- * {@code byte[]}, and it is copied on the way in and on the way out, so an
- * array a caller still holds cannot be used to change the message later.
+ * <p>Instances are immutable. Build one with {@link #builder()}, or change a copy with {@link
+ * #toBuilder()}. Chip data is the one value held as a {@code byte[]}, and it is copied on the way
+ * in and on the way out, so an array a caller still holds cannot be used to change the message
+ * later.
  */
 public final class Iso8583Message {
 
@@ -45,9 +43,9 @@ public final class Iso8583Message {
     private final Map<String, Object> values;
 
     /**
-     * Whether any value is a {@code byte[]}, which only chip data is. Lets
-     * {@link #values()} hand back its map untouched for the common message,
-     * and copy only where there is a mutable array to protect.
+     * Whether any value is a {@code byte[]}, which only chip data is. Lets {@link #values()} hand
+     * back its map untouched for the common message, and copy only where there is a mutable array
+     * to protect.
      */
     private final boolean hasBinaryValues;
 
@@ -87,9 +85,8 @@ public final class Iso8583Message {
     /**
      * The message type indicator, if the message has one.
      *
-     * @throws IllegalArgumentException if the message carries something that is
-     *                                  not four digits; use {@link #mtiText()}
-     *                                  to see it as it was read
+     * @throws IllegalArgumentException if the message carries something that is not four digits;
+     *     use {@link #mtiText()} to see it as it was read
      */
     public Optional<Mti> mti() {
         return text(MTI_KEY).map(Mti::new);
@@ -101,8 +98,8 @@ public final class Iso8583Message {
     }
 
     /**
-     * Every value, keyed as described on this class. Unmodifiable, and chip
-     * data is handed back as a copy, so nothing here can change the message.
+     * Every value, keyed as described on this class. Unmodifiable, and chip data is handed back as
+     * a copy, so nothing here can change the message.
      */
     public Map<String, Object> values() {
         return hasBinaryValues ? Collections.unmodifiableMap(copyOfValues()) : values;
@@ -111,8 +108,9 @@ public final class Iso8583Message {
     /** The values with every {@code byte[]} cloned, so the originals stay put. */
     private Map<String, Object> copyOfValues() {
         Map<String, Object> copy = new LinkedHashMap<>();
-        values.forEach((key, value) ->
-                copy.put(key, value instanceof byte[] bytes ? bytes.clone() : value));
+        values.forEach(
+                (key, value) ->
+                        copy.put(key, value instanceof byte[] bytes ? bytes.clone() : value));
         return copy;
     }
 
@@ -163,11 +161,19 @@ public final class Iso8583Message {
      * @throws Iso8583Exception if the value is not a number
      */
     public Optional<Long> number(int de) {
-        return value(deKey(de)).map(value -> switch (value) {
-            case Number n -> n.longValue();
-            case String s -> parseLong(de, s);
-            default -> throw new Iso8583Exception("DE" + de + " is not a number: " + value.getClass());
-        });
+        return value(deKey(de))
+                .map(
+                        value ->
+                                switch (value) {
+                                    case Number n -> n.longValue();
+                                    case String s -> parseLong(de, s);
+                                    default ->
+                                            throw new Iso8583Exception(
+                                                    "DE"
+                                                            + de
+                                                            + " is not a number: "
+                                                            + value.getClass());
+                                });
     }
 
     /**
@@ -176,12 +182,20 @@ public final class Iso8583Message {
      * @throws Iso8583Exception if the value is not a number
      */
     public Optional<BigDecimal> amount(int de) {
-        return value(deKey(de)).map(value -> switch (value) {
-            case BigDecimal d -> d;
-            case Number n -> BigDecimal.valueOf(n.longValue());
-            case String s -> parseDecimal(de, s);
-            default -> throw new Iso8583Exception("DE" + de + " is not a number: " + value.getClass());
-        });
+        return value(deKey(de))
+                .map(
+                        value ->
+                                switch (value) {
+                                    case BigDecimal d -> d;
+                                    case Number n -> BigDecimal.valueOf(n.longValue());
+                                    case String s -> parseDecimal(de, s);
+                                    default ->
+                                            throw new Iso8583Exception(
+                                                    "DE"
+                                                            + de
+                                                            + " is not a number: "
+                                                            + value.getClass());
+                                });
     }
 
     /**
@@ -190,12 +204,15 @@ public final class Iso8583Message {
      * @throws Iso8583Exception if the value was not read as a date
      */
     public Optional<LocalDateTime> dateTime(int de) {
-        return value(deKey(de)).map(value -> {
-            if (value instanceof LocalDateTime dateTime) {
-                return dateTime;
-            }
-            throw new Iso8583Exception("DE" + de + " is not a date: " + value.getClass());
-        });
+        return value(deKey(de))
+                .map(
+                        value -> {
+                            if (value instanceof LocalDateTime dateTime) {
+                                return dateTime;
+                            }
+                            throw new Iso8583Exception(
+                                    "DE" + de + " is not a date: " + value.getClass());
+                        });
     }
 
     /**
@@ -256,10 +273,9 @@ public final class Iso8583Message {
     /**
      * Whether both messages hold the same keys and the same values.
      *
-     * <p>Chip data is a {@code byte[]}, which compares by identity rather than
-     * by content, so this walks the values rather than leaning on
-     * {@link Map#equals}. Without that, parsing the same bytes twice gives two
-     * messages that are not equal.
+     * <p>Chip data is a {@code byte[]}, which compares by identity rather than by content, so this
+     * walks the values rather than leaning on {@link Map#equals}. Without that, parsing the same
+     * bytes twice gives two messages that are not equal.
      */
     @Override
     public boolean equals(Object other) {
@@ -279,28 +295,32 @@ public final class Iso8583Message {
     }
 
     /**
-     * Built the way {@link Map#hashCode} builds one, but taking chip data by
-     * its content so that equal messages hash alike.
+     * Built the way {@link Map#hashCode} builds one, but taking chip data by its content so that
+     * equal messages hash alike.
      */
     @Override
     public int hashCode() {
         int hash = 0;
         for (Map.Entry<String, Object> entry : values.entrySet()) {
             Object value = entry.getValue();
-            int valueHash = value instanceof byte[] bytes ? Arrays.hashCode(bytes) : value.hashCode();
+            int valueHash =
+                    value instanceof byte[] bytes ? Arrays.hashCode(bytes) : value.hashCode();
             hash += entry.getKey().hashCode() ^ valueHash;
         }
         return hash;
     }
 
     /**
-     * A summary safe to log: the message type and which data elements are
-     * present, but none of their values.
+     * A summary safe to log: the message type and which data elements are present, but none of
+     * their values.
      */
     @Override
     public String toString() {
-        return "Iso8583Message[mti=" + values.getOrDefault(MTI_KEY, "none")
-                + ", fields=" + fieldNumbers() + "]";
+        return "Iso8583Message[mti="
+                + values.getOrDefault(MTI_KEY, "none")
+                + ", fields="
+                + fieldNumbers()
+                + "]";
     }
 
     /** Builds an {@link Iso8583Message}. */
@@ -308,8 +328,7 @@ public final class Iso8583Message {
 
         private final Map<String, Object> values = new LinkedHashMap<>();
 
-        private Builder() {
-        }
+        private Builder() {}
 
         /** Sets the message type indicator. */
         public Builder mti(String mti) {

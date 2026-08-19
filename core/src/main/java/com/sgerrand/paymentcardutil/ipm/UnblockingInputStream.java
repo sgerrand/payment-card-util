@@ -7,12 +7,12 @@ import java.io.InputStream;
 /**
  * Strips 1014 byte blocking, handing back only the data.
  *
- * <p>Blocks are read whole and the two filler bytes on the end of each are
- * dropped. A short final block is passed on as it stands, which is what happens
- * when a file was cut off before it was filled out.
+ * <p>Blocks are read whole and the two filler bytes on the end of each are dropped. A short final
+ * block is passed on as it stands, which is what happens when a file was cut off before it was
+ * filled out.
  *
- * <p>Only wrap a file that really is blocked. Running an unblocked file through
- * this drops two good bytes out of every 1014.
+ * <p>Only wrap a file that really is blocked. Running an unblocked file through this drops two good
+ * bytes out of every 1014.
  */
 public final class UnblockingInputStream extends FilterInputStream {
 

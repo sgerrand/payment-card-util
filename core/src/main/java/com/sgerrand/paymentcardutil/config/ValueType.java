@@ -1,8 +1,6 @@
 package com.sgerrand.paymentcardutil.config;
 
-/**
- * The Java type a field's text is turned into when a message is read.
- */
+/** The Java type a field's text is turned into when a message is read. */
 public enum ValueType {
 
     /** Left as a {@link String}. The default when a field says nothing. */
@@ -20,8 +18,8 @@ public enum ValueType {
     /**
      * Maps a cardutil {@code field_python_type} name onto a value type.
      *
-     * @param pythonType one of {@code int}, {@code long}, {@code decimal} or
-     *                   {@code datetime}; {@code null} means text
+     * @param pythonType one of {@code int}, {@code long}, {@code decimal} or {@code datetime};
+     *     {@code null} means text
      * @throws IllegalArgumentException if the name is not one of those
      */
     public static ValueType fromPythonType(String pythonType) {
@@ -32,7 +30,8 @@ public enum ValueType {
             case "int", "long" -> LONG;
             case "decimal" -> DECIMAL;
             case "datetime" -> DATETIME;
-            default -> throw new IllegalArgumentException("Unknown field python type: " + pythonType);
+            default ->
+                    throw new IllegalArgumentException("Unknown field python type: " + pythonType);
         };
     }
 }

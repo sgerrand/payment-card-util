@@ -13,10 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * 00000010: 74 20 72 65 63 6F 72 64  20 31 32 33 34 35 36 37  t record 1234567
  * </pre>
  *
- * <p>The right hand column is the same bytes read as text. Which character set
- * to read them in matters: an IPM file from a mainframe is EBCDIC, and reading
- * it as Latin-1 turns every readable field into noise. Pass the file's own
- * character set and the column becomes worth looking at.
+ * <p>The right hand column is the same bytes read as text. Which character set to read them in
+ * matters: an IPM file from a mainframe is EBCDIC, and reading it as Latin-1 turns every readable
+ * field into noise. Pass the file's own character set and the column becomes worth looking at.
  */
 public final class HexDump {
 
@@ -27,8 +26,8 @@ public final class HexDump {
     private static final int HALF = BYTES_PER_LINE / 2;
 
     /**
-     * Width of the hex column, so a short final line still lines up: two
-     * characters a byte, a space between each, and one more splitting the line.
+     * Width of the hex column, so a short final line still lines up: two characters a byte, a space
+     * between each, and one more splitting the line.
      */
     private static final int HEX_WIDTH = BYTES_PER_LINE * 3;
 
@@ -43,14 +42,12 @@ public final class HexDump {
     /**
      * The text column, worked out once per character set.
      *
-     * <p>A byte always reads as the same character, so a 256 entry table beats
-     * decoding one byte at a time: a 6000 byte record dump would otherwise
-     * allocate an array and a string per byte.
+     * <p>A byte always reads as the same character, so a 256 entry table beats decoding one byte at
+     * a time: a 6000 byte record dump would otherwise allocate an array and a string per byte.
      */
     private static final Map<Charset, char[]> READABLE = new ConcurrentHashMap<>();
 
-    private HexDump() {
-    }
+    private HexDump() {}
 
     /** Dumps every byte, reading the text column as Latin-1. */
     public static String format(byte[] data) {
@@ -69,13 +66,13 @@ public final class HexDump {
     /**
      * Dumps the start of a run of bytes.
      *
-     * <p>A whole clearing record can be 6000 bytes, which is 375 lines nobody
-     * will read. Where the dump is going somewhere with a reader attached, cut
-     * it short; the tail rarely says anything the head did not.
+     * <p>A whole clearing record can be 6000 bytes, which is 375 lines nobody will read. Where the
+     * dump is going somewhere with a reader attached, cut it short; the tail rarely says anything
+     * the head did not.
      *
-     * @param charset  how to read the text column
-     * @param maxBytes how many bytes to show before stopping. A line saying how
-     *                 many were left out is added when it stops early
+     * @param charset how to read the text column
+     * @param maxBytes how many bytes to show before stopping. A line saying how many were left out
+     *     is added when it stops early
      */
     public static String format(byte[] data, Charset charset, int maxBytes) {
         if (data.length == 0) {
@@ -96,7 +93,8 @@ public final class HexDump {
         return out.toString();
     }
 
-    private static void appendLine(StringBuilder out, byte[] data, int from, int to, Charset charset) {
+    private static void appendLine(
+            StringBuilder out, byte[] data, int from, int to, Charset charset) {
         appendHex(out, from >>> 24);
         appendHex(out, from >>> 16);
         appendHex(out, from >>> 8);
@@ -141,9 +139,9 @@ public final class HexDump {
     /**
      * One byte read as a character, or a full stop where it would not show up.
      *
-     * <p>What counts as showing up follows Python's {@code str.isprintable},
-     * since that is what the dump this matches uses: a space counts, and so does
-     * an accented letter, but control and formatting characters do not.
+     * <p>What counts as showing up follows Python's {@code str.isprintable}, since that is what the
+     * dump this matches uses: a space counts, and so does an accented letter, but control and
+     * formatting characters do not.
      */
     private static char readable(byte value, Charset charset) {
         String decoded = new String(new byte[] {value}, charset);
@@ -155,9 +153,15 @@ public final class HexDump {
             return c;
         }
         return switch (Character.getType(c)) {
-            case Character.CONTROL, Character.FORMAT, Character.SURROGATE, Character.PRIVATE_USE,
-                 Character.UNASSIGNED, Character.LINE_SEPARATOR, Character.PARAGRAPH_SEPARATOR,
-                 Character.SPACE_SEPARATOR -> UNPRINTABLE;
+            case Character.CONTROL,
+                    Character.FORMAT,
+                    Character.SURROGATE,
+                    Character.PRIVATE_USE,
+                    Character.UNASSIGNED,
+                    Character.LINE_SEPARATOR,
+                    Character.PARAGRAPH_SEPARATOR,
+                    Character.SPACE_SEPARATOR ->
+                    UNPRINTABLE;
             default -> c;
         };
     }

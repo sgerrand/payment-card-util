@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Reading and writing CSV the way Python's {@code csv} module does, so files
- * move between these tools and cardutil's without surprises.
+ * Reading and writing CSV the way Python's {@code csv} module does, so files move between these
+ * tools and cardutil's without surprises.
  *
- * <p>That means: fields are separated by commas and rows by a single newline;
- * a field is quoted only where it holds a comma, a quote or a line break; and a
- * quote inside a quoted field is written twice.
+ * <p>That means: fields are separated by commas and rows by a single newline; a field is quoted
+ * only where it holds a comma, a quote or a line break; and a quote inside a quoted field is
+ * written twice.
  */
 final class Csv {
 
@@ -30,14 +30,13 @@ final class Csv {
     private static final DateTimeFormatter DATE_TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    private Csv() {
-    }
+    private Csv() {}
 
     /**
      * Writes rows under a fixed set of columns.
      *
-     * <p>A row missing a column writes an empty cell, and anything in a row that
-     * is not a named column is left out.
+     * <p>A row missing a column writes an empty cell, and anything in a row that is not a named
+     * column is left out.
      */
     static void write(BufferedWriter out, List<String> columns, Iterable<Map<String, ?>> rows)
             throws IOException {
@@ -76,10 +75,11 @@ final class Csv {
     }
 
     private static String quote(String value) {
-        boolean needsQuotes = value.indexOf(',') >= 0
-                || value.indexOf('"') >= 0
-                || value.indexOf('\n') >= 0
-                || value.indexOf('\r') >= 0;
+        boolean needsQuotes =
+                value.indexOf(',') >= 0
+                        || value.indexOf('"') >= 0
+                        || value.indexOf('\n') >= 0
+                        || value.indexOf('\r') >= 0;
         if (!needsQuotes) {
             return value;
         }
@@ -89,8 +89,8 @@ final class Csv {
     /**
      * Reads a CSV file into one map per row, keyed by the header row.
      *
-     * <p>Empty cells are left out, matching what cardutil's CSV to IPM tool does,
-     * so an empty column does not become an empty data element.
+     * <p>Empty cells are left out, matching what cardutil's CSV to IPM tool does, so an empty
+     * column does not become an empty data element.
      */
     static List<Map<String, String>> read(Reader in) throws IOException {
         List<List<String>> rows = parse(in);

@@ -6,9 +6,8 @@ import java.util.stream.IntStream;
 /**
  * An ISO 8583 bitmap: the bits that say which data elements a message holds.
  *
- * <p>The primary bitmap is 8 bytes and covers fields 1 to 64. If bit 1 is set,
- * a secondary bitmap follows and covers fields 65 to 128. Fields are numbered
- * from 1.
+ * <p>The primary bitmap is 8 bytes and covers fields 1 to 64. If bit 1 is set, a secondary bitmap
+ * follows and covers fields 65 to 128. Fields are numbered from 1.
  */
 public final class Bitmap {
 
@@ -34,18 +33,16 @@ public final class Bitmap {
     /**
      * Wraps bytes that are already known to be a whole bitmap.
      *
-     * <p>How long the bitmap is comes from how many bytes are handed over, not
-     * from bit 1. ISO 8583 messages in IPM files always carry both halves,
-     * whether or not bit 1 says so, so a reader that sized the bitmap by that
-     * bit would misread the whole record.
+     * <p>How long the bitmap is comes from how many bytes are handed over, not from bit 1. ISO 8583
+     * messages in IPM files always carry both halves, whether or not bit 1 says so, so a reader
+     * that sized the bitmap by that bit would misread the whole record.
      *
      * @param bytes 8 or 16 bytes
      * @throws IllegalArgumentException if the length is neither
      */
     public static Bitmap of(byte[] bytes) {
         if (bytes.length != PRIMARY_BYTES && bytes.length != PRIMARY_BYTES + SECONDARY_BYTES) {
-            throw new IllegalArgumentException(
-                    "A bitmap is 8 or 16 bytes, was " + bytes.length);
+            throw new IllegalArgumentException("A bitmap is 8 or 16 bytes, was " + bytes.length);
         }
         return new Bitmap(bytes.clone());
     }
@@ -75,8 +72,8 @@ public final class Bitmap {
     }
 
     /**
-     * Marks the given field as present. Grows the bitmap to 16 bytes, and sets
-     * bit 1, if the field number needs a secondary bitmap.
+     * Marks the given field as present. Grows the bitmap to 16 bytes, and sets bit 1, if the field
+     * number needs a secondary bitmap.
      *
      * @param field the field number, from 1
      */

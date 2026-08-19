@@ -1,7 +1,6 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
 import com.sgerrand.paymentcardutil.config.IsoConfig;
-
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -9,12 +8,11 @@ import java.util.Objects;
 /**
  * Settings for reading and writing ISO 8583 messages.
  *
- * @param charset   how text in the message is encoded. IPM files from a
- *                  mainframe are usually EBCDIC: {@link #EBCDIC_CP500} or
- *                  {@link #EBCDIC_CP037}
- * @param hexBitmap {@code true} if the bitmap is written as 32 hex characters
- *                  rather than 16 raw bytes
- * @param config    the message layout
+ * @param charset how text in the message is encoded. IPM files from a mainframe are usually EBCDIC:
+ *     {@link #EBCDIC_CP500} or {@link #EBCDIC_CP037}
+ * @param hexBitmap {@code true} if the bitmap is written as 32 hex characters rather than 16 raw
+ *     bytes
+ * @param config the message layout
  */
 public record Iso8583Options(Charset charset, boolean hexBitmap, IsoConfig config) {
 

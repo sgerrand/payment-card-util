@@ -1,8 +1,8 @@
 package com.sgerrand.paymentcardutil.card;
 
 /**
- * A Bank Identification Number: the leading digits of a card number that
- * identify the issuer. Also called an IIN (Issuer Identification Number).
+ * A Bank Identification Number: the leading digits of a card number that identify the issuer. Also
+ * called an IIN (Issuer Identification Number).
  *
  * @param digits the BIN digits, six or eight long
  */

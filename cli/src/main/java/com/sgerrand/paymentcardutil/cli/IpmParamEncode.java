@@ -3,34 +3,33 @@ package com.sgerrand.paymentcardutil.cli;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.ipm.VbsReader;
 import com.sgerrand.paymentcardutil.ipm.VbsWriter;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.Mixin;
-import picocli.CommandLine.Parameters;
-
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
+import picocli.CommandLine.Parameters;
 
 /**
- * Rewrites a Mastercard IPM parameter file in a different character set or
- * blocking.
+ * Rewrites a Mastercard IPM parameter file in a different character set or blocking.
  *
- * <p>Parameter records are plain text, not ISO 8583 messages, so each record is
- * simply decoded and encoded again rather than being taken apart.
+ * <p>Parameter records are plain text, not ISO 8583 messages, so each record is simply decoded and
+ * encoded again rather than being taken apart.
  */
-@Command(name = "mci-ipm-param-encode",
-        description = "Rewrite a Mastercard IPM parameter file in another character set or file format.",
+@Command(
+        name = "mci-ipm-param-encode",
+        description =
+                "Rewrite a Mastercard IPM parameter file in another character set or file format.",
         mixinStandardHelpOptions = true)
 final class IpmParamEncode implements Callable<Integer> {
 
     @Parameters(index = "0", paramLabel = "PARAM_FILE", description = "The parameter file to read.")
     Path inFile;
 
-    @Mixin
-    EncodeOptions options = new EncodeOptions();
+    @Mixin EncodeOptions options = new EncodeOptions();
 
     @Override
     public Integer call() throws Exception {
@@ -46,10 +45,15 @@ final class IpmParamEncode implements Callable<Integer> {
 
         int count = 0;
         try (InputStream in = Files.newInputStream(inFile);
-             OutputStream stream = Files.newOutputStream(out);
-             VbsReader reader = options.inFormat.blocked()
-                     ? VbsReader.blocked(in, config) : VbsReader.of(in, config);
-             VbsWriter writer = options.outFormat.blocked() ? VbsWriter.blocked(stream) : VbsWriter.of(stream)) {
+                OutputStream stream = Files.newOutputStream(out);
+                VbsReader reader =
+                        options.inFormat.blocked()
+                                ? VbsReader.blocked(in, config)
+                                : VbsReader.of(in, config);
+                VbsWriter writer =
+                        options.outFormat.blocked()
+                                ? VbsWriter.blocked(stream)
+                                : VbsWriter.of(stream)) {
             for (byte[] record : reader) {
                 writer.write(new String(record, from).getBytes(to));
                 count++;

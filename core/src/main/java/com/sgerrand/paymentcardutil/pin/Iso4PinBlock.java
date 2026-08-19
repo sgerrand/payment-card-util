@@ -1,16 +1,15 @@
 package com.sgerrand.paymentcardutil.pin;
 
 import com.sgerrand.paymentcardutil.crypto.DesKeys;
-
 import java.security.SecureRandom;
 import java.util.HexFormat;
 
 /**
  * ISO 9564-1 format 4.
  *
- * <p>Sixteen bytes: a format marker, the pin length, the pin, filler, then eight
- * random bytes. The random tail is what stops the same pin producing the same
- * block twice, so no card number is needed to build or read one.
+ * <p>Sixteen bytes: a format marker, the pin length, the pin, filler, then eight random bytes. The
+ * random tail is what stops the same pin producing the same block twice, so no card number is
+ * needed to build or read one.
  *
  * <pre>
  * CLPPPPaaaaaaaaAARRRRRRRRRRRRRRRR
@@ -22,10 +21,9 @@ import java.util.HexFormat;
  *
  * <p>Format 4 blocks are meant for AES, so {@link #toEncryptedBytes} uses it.
  *
- * <p>The pin length goes in as a single hex digit, so a 12 digit pin writes
- * {@code C}. cardutil writes it as decimal text instead, which pushes the rest
- * of the block along and produces a block no reader can make sense of. Pins of
- * 10 digits or more are the only case where the two disagree.
+ * <p>The pin length goes in as a single hex digit, so a 12 digit pin writes {@code C}. cardutil
+ * writes it as decimal text instead, which pushes the rest of the block along and produces a block
+ * no reader can make sense of. Pins of 10 digits or more are the only case where the two disagree.
  */
 public final class Iso4PinBlock implements PinBlock {
 
@@ -35,6 +33,7 @@ public final class Iso4PinBlock implements PinBlock {
 
     /** Hex characters in the half of the block that holds the pin. */
     private static final int PIN_HALF_HEX = 16;
+
     private static final char FILLER = 'a';
     private static final int RANDOM_BYTES = 8;
 
@@ -53,10 +52,10 @@ public final class Iso4PinBlock implements PinBlock {
     }
 
     /**
-     * Builds a block with a given random tail. Use this only to reproduce a
-     * known block, such as in a test; real blocks need fresh randomness.
+     * Builds a block with a given random tail. Use this only to reproduce a known block, such as in
+     * a test; real blocks need fresh randomness.
      *
-     * @param pin         the pin, 4 to 12 digits
+     * @param pin the pin, 4 to 12 digits
      * @param randomValue eight bytes
      */
     public Iso4PinBlock(String pin, byte[] randomValue) {
@@ -89,7 +88,7 @@ public final class Iso4PinBlock implements PinBlock {
      * Reads a pin out of an encrypted block.
      *
      * @param encryptedBlock the encrypted block
-     * @param key            the pin protection key, as hex
+     * @param key the pin protection key, as hex
      */
     public static Iso4PinBlock fromEncryptedBytes(byte[] encryptedBlock, String key) {
         return fromBytes(DesKeys.aesDecrypt(HEX.parseHex(key), encryptedBlock));
@@ -120,8 +119,8 @@ public final class Iso4PinBlock implements PinBlock {
     /**
      * A Visa pin verification value for this pin and a card.
      *
-     * @param pvvKey     the pin verification key, as hex
-     * @param keyIndex   which pin verification key was used
+     * @param pvvKey the pin verification key, as hex
+     * @param keyIndex which pin verification key was used
      * @param cardNumber the card number, which a format 4 block does not carry
      */
     public String toPvv(String pvvKey, int keyIndex, String cardNumber) {

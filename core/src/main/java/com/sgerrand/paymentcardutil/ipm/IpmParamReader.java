@@ -2,7 +2,6 @@ package com.sgerrand.paymentcardutil.ipm;
 
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.config.ParamTable;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,18 +24,19 @@ import java.util.Map;
  * }
  * }</pre>
  *
- * <p>A parameter file starts with an index, the {@code IP0000T1} table, saying
- * which three character code stands for which table. The reader walks that index
- * first, then hands back only the rows belonging to the table asked for.
+ * <p>A parameter file starts with an index, the {@code IP0000T1} table, saying which three
+ * character code stands for which table. The reader walks that index first, then hands back only
+ * the rows belonging to the table asked for.
  *
- * <p>Records come in two shapes. Compressed records, the usual kind, name their
- * table by its short code. Expanded records carry the full table id instead; set
- * {@code expanded} for those.
+ * <p>Records come in two shapes. Compressed records, the usual kind, name their table by its short
+ * code. Expanded records carry the full table id instead; set {@code expanded} for those.
  */
-public final class IpmParamReader extends LookAheadIterator<ParamRecord> implements Iterable<ParamRecord>, Closeable {
+public final class IpmParamReader extends LookAheadIterator<ParamRecord>
+        implements Iterable<ParamRecord>, Closeable {
 
     /** Where the index records say which table they describe. */
     private static final int INDEX_KEY_START = 11;
+
     private static final int INDEX_KEY_END = 19;
     private static final int INDEX_TABLE_ID_START = 19;
     private static final int INDEX_TABLE_ID_END = 27;
@@ -46,17 +46,15 @@ public final class IpmParamReader extends LookAheadIterator<ParamRecord> impleme
     /**
      * Where the parts common to every record sit.
      *
-     * <p>The two record shapes differ only in these offsets, so the shape is
-     * picked once and read from here rather than branched on at each use.
+     * <p>The two record shapes differ only in these offsets, so the shape is picked once and read
+     * from here rather than branched on at each use.
      *
      * @param timestampEnd where the effective timestamp stops
-     * @param activeEnd    where the active/inactive code stops
-     * @param tableEnd     where the table name stops: the full table id in an
-     *                     expanded record, the three character code in a
-     *                     compressed one
-     * @param fieldOffset  how far the config's field positions have to shift.
-     *                     Compressed records leave out the 8 character table id
-     *                     the config counts from
+     * @param activeEnd where the active/inactive code stops
+     * @param tableEnd where the table name stops: the full table id in an expanded record, the
+     *     three character code in a compressed one
+     * @param fieldOffset how far the config's field positions have to shift. Compressed records
+     *     leave out the 8 character table id the config counts from
      */
     private record Shape(int timestampEnd, int activeEnd, int tableEnd, int fieldOffset) {
 
@@ -78,39 +76,56 @@ public final class IpmParamReader extends LookAheadIterator<ParamRecord> impleme
     private final ParamTable table;
     private final Map<String, String> tableIndex = new HashMap<>();
 
-    private IpmParamReader(VbsReader records, String tableId, Charset charset, boolean expanded, IsoConfig config) {
+    private IpmParamReader(
+            VbsReader records,
+            String tableId,
+            Charset charset,
+            boolean expanded,
+            IsoConfig config) {
         this.records = records;
         this.tableId = tableId;
         this.charset = charset;
         this.expanded = expanded;
         this.shape = expanded ? Shape.EXPANDED : Shape.COMPRESSED;
-        this.table = config.parameterTable(tableId).orElseThrow(() -> new IpmDataException(
-                "No layout configured for parameter table " + tableId));
+        this.table =
+                config.parameterTable(tableId)
+                        .orElseThrow(
+                                () ->
+                                        new IpmDataException(
+                                                "No layout configured for parameter table "
+                                                        + tableId));
         readIndex();
     }
 
     /** Reads a parameter file with no blocking, using the default settings. */
     public static IpmParamReader of(InputStream in, String tableId) {
-        return new IpmParamReader(VbsReader.of(in), tableId, DEFAULT_CHARSET, false, IsoConfig.defaults());
+        return new IpmParamReader(
+                VbsReader.of(in), tableId, DEFAULT_CHARSET, false, IsoConfig.defaults());
     }
 
     /** Reads a parameter file in 1014 byte blocks, using the default settings. */
     public static IpmParamReader blocked(InputStream in, String tableId) {
-        return new IpmParamReader(VbsReader.blocked(in), tableId, DEFAULT_CHARSET, false, IsoConfig.defaults());
+        return new IpmParamReader(
+                VbsReader.blocked(in), tableId, DEFAULT_CHARSET, false, IsoConfig.defaults());
     }
 
     /**
      * Reads a parameter file.
      *
-     * @param in       the file
-     * @param tableId  the table wanted, such as {@code IP0040T1}
-     * @param charset  the file's character set
-     * @param blocked  whether the file is in 1014 byte blocks
+     * @param in the file
+     * @param tableId the table wanted, such as {@code IP0040T1}
+     * @param charset the file's character set
+     * @param blocked whether the file is in 1014 byte blocks
      * @param expanded whether records carry the full table id
-     * @param config   the layout to read the table with
+     * @param config the layout to read the table with
      */
-    public static IpmParamReader open(InputStream in, String tableId, Charset charset,
-                                      boolean blocked, boolean expanded, IsoConfig config) {
+    public static IpmParamReader open(
+            InputStream in,
+            String tableId,
+            Charset charset,
+            boolean blocked,
+            boolean expanded,
+            IsoConfig config) {
         VbsReader records = blocked ? VbsReader.blocked(in, config) : VbsReader.of(in, config);
         return new IpmParamReader(records, tableId, charset, expanded, config);
     }
@@ -121,8 +136,8 @@ public final class IpmParamReader extends LookAheadIterator<ParamRecord> impleme
     }
 
     /**
-     * The column names this table's rows carry, in order: the row details first,
-     * then the table's own fields.
+     * The column names this table's rows carry, in order: the row details first, then the table's
+     * own fields.
      */
     public List<String> columnNames() {
         List<String> names = new ArrayList<>(ParamRecord.DETAIL_COLUMNS);
@@ -146,11 +161,11 @@ public final class IpmParamReader extends LookAheadIterator<ParamRecord> impleme
     }
 
     /**
-     * Walks the {@code IP0000T1} index at the front of the file, learning which
-     * short code stands for which table.
+     * Walks the {@code IP0000T1} index at the front of the file, learning which short code stands
+     * for which table.
      *
-     * @throws IpmDataException if the index has no trailer, which means the file
-     *                          was cut short or is not a parameter file
+     * @throws IpmDataException if the index has no trailer, which means the file was cut short or
+     *     is not a parameter file
      */
     private void readIndex() {
         boolean trailerFound = false;
@@ -171,7 +186,9 @@ public final class IpmParamReader extends LookAheadIterator<ParamRecord> impleme
         }
     }
 
-    /** @return the next row belonging to the wanted table, or {@code null} at the end */
+    /**
+     * @return the next row belonging to the wanted table, or {@code null} at the end
+     */
     @Override
     ParamRecord readNext() {
         while (records.hasNext()) {
@@ -199,17 +216,23 @@ public final class IpmParamReader extends LookAheadIterator<ParamRecord> impleme
     private Map<String, String> readFields(String record) {
         int offset = shape.fieldOffset();
         Map<String, String> fields = new LinkedHashMap<>();
-        table.fields().forEach((name, position) ->
-                fields.put(name, between(record, position.start() + offset, position.end() + offset)));
+        table.fields()
+                .forEach(
+                        (name, position) ->
+                                fields.put(
+                                        name,
+                                        between(
+                                                record,
+                                                position.start() + offset,
+                                                position.end() + offset)));
         return fields;
     }
 
     /**
      * A slice of a record, clipped to what is actually there.
      *
-     * <p>Python string slicing never runs off the end, and parameter records are
-     * often shorter than the layout allows, so a short record gives a short
-     * value rather than an error.
+     * <p>Python string slicing never runs off the end, and parameter records are often shorter than
+     * the layout allows, so a short record gives a short value rather than an error.
      */
     private static String between(String record, int start, int end) {
         int from = Math.min(Math.max(start, 0), record.length());

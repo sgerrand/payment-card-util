@@ -1,17 +1,15 @@
 package com.sgerrand.paymentcardutil.cli;
 
-import picocli.CommandLine.Option;
-
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import picocli.CommandLine.Option;
 
 /**
  * Options the two rewriting tools take.
  *
- * <p>They read a file and write it back out, so they name a character set and a
- * layout on each side rather than the single pair {@link CommonOptions} carries.
- * Their input default is cp500, since a file worth rewriting usually came off a
- * mainframe.
+ * <p>They read a file and write it back out, so they name a character set and a layout on each side
+ * rather than the single pair {@link CommonOptions} carries. Their input default is cp500, since a
+ * file worth rewriting usually came off a mainframe.
  */
 class EncodeOptions {
 
@@ -27,25 +25,38 @@ class EncodeOptions {
         }
     }
 
-    @Option(names = {"-o", "--out-filename"},
-            description = "Where to write the result. Default: the input file with .out on the end.")
+    @Option(
+            names = {"-o", "--out-filename"},
+            description =
+                    "Where to write the result. Default: the input file with .out on the end.")
     Path outFile;
 
-    @Option(names = "--in-encoding", description = "Character set of the input. Default: ${DEFAULT-VALUE}.")
+    @Option(
+            names = "--in-encoding",
+            description = "Character set of the input. Default: ${DEFAULT-VALUE}.")
     String inEncoding = "cp500";
 
-    @Option(names = "--out-encoding", description = "Character set to write. Default: ${DEFAULT-VALUE}.")
+    @Option(
+            names = "--out-encoding",
+            description = "Character set to write. Default: ${DEFAULT-VALUE}.")
     String outEncoding = "latin_1";
 
-    @Option(names = "--in-format", description = "Layout of the input: ${COMPLETION-CANDIDATES}. "
-            + "Default: ${DEFAULT-VALUE}.")
+    @Option(
+            names = "--in-format",
+            description =
+                    "Layout of the input: ${COMPLETION-CANDIDATES}. "
+                            + "Default: ${DEFAULT-VALUE}.")
     Format inFormat = Format.BLOCKED_1014;
 
-    @Option(names = "--out-format", description = "Layout to write: ${COMPLETION-CANDIDATES}. "
-            + "Default: ${DEFAULT-VALUE}.")
+    @Option(
+            names = "--out-format",
+            description =
+                    "Layout to write: ${COMPLETION-CANDIDATES}. " + "Default: ${DEFAULT-VALUE}.")
     Format outFormat = Format.BLOCKED_1014;
 
-    @Option(names = "--debug", description = "Print the full stack trace when something goes wrong.")
+    @Option(
+            names = "--debug",
+            description = "Print the full stack trace when something goes wrong.")
     boolean debug;
 
     Charset inCharset() {
