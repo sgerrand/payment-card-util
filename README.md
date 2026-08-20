@@ -288,6 +288,16 @@ this:
 The failing run keeps the regenerated files as an artifact, so the new output can
 be read without installing anything.
 
+The command line is hand written, so regenerating proves nothing about it. The
+same workflow reads cardutil's own argument parsers and this port's `--help`,
+and fails if a tool has grown an option we lack, or has one of ours that the
+README does not list as a divergence. Run it the same way:
+
+```sh
+mvn package
+python tools/check_cli_options.py
+```
+
 ## Build
 
 ```sh

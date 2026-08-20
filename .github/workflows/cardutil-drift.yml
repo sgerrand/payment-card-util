@@ -8,12 +8,14 @@ on:
   push:
     paths:
       - 'tools/**'
+      - 'cli/src/main/java/**'
       - 'core/src/main/java/com/sgerrand/paymentcardutil/config/DefaultConfig.java'
       - 'core/src/test/resources/vectors/cardutil.json'
       - '.github/workflows/cardutil-drift.yml'
   pull_request:
     paths:
       - 'tools/**'
+      - 'cli/src/main/java/**'
       - 'core/src/main/java/com/sgerrand/paymentcardutil/config/DefaultConfig.java'
       - 'core/src/test/resources/vectors/cardutil.json'
       - '.github/workflows/cardutil-drift.yml'
@@ -72,6 +74,25 @@ jobs:
       - name: Run the tests against whatever was just generated
         id: tests
         run: mvn --batch-mode verify
+
+      - name: Check the command line against cardutil's
+        if: always()
+        run: |
+          # The test step above builds the jar, but it never gets that far if
+          # the tests fail, and this check is worth having either way.
+          ls cli/target/payment-card-util-cli-*-all.jar > /dev/null 2>&1 \
+            || mvn --batch-mode --quiet package -DskipTests
+
+          {
+            echo ""
+            echo "## Command line options"
+            echo ""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          python tools/check_cli_options.py 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       - name: Fail if the generated files moved
         if: always()

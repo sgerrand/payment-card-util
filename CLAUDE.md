@@ -67,6 +67,12 @@ Both generators are reproducible: run against 0.7.3 they produce no diff. The
 `cardutil drift` workflow relies on that, running weekly to regenerate against the
 newest cardutil and fail if anything moved.
 
+That covers the generated files only. The command line is hand written, so the
+same workflow runs `tools/check_cli_options.py`, which reads cardutil's argument
+parsers and this port's `--help` and fails on an option one side has and the
+other does not. Ours alone is allowed where the README lists it as a divergence
+and `EXPECTED_EXTRA` in that script names it.
+
 ## Layout
 
 Two Maven modules, and the split is a constraint rather than tidiness:
