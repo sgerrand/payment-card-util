@@ -55,11 +55,11 @@ final class IpmParamEncode implements Callable<Integer>, FileCommand {
         try (InputStream in = Files.newInputStream(inFile);
                 OutputStream stream = Files.newOutputStream(out);
                 VbsReader reader =
-                        options.inFormat.blocked()
+                        options.blocked()
                                 ? VbsReader.blocked(in, config)
                                 : VbsReader.of(in, config);
                 VbsWriter writer =
-                        options.outFormat.blocked()
+                        options.outputBlocked()
                                 ? VbsWriter.blocked(stream)
                                 : VbsWriter.of(stream)) {
             for (byte[] record : reader) {

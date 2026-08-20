@@ -55,6 +55,13 @@ class EncodeOptions implements FileCommand.InputOptions {
     Format outFormat = Format.BLOCKED_1014;
 
     @Option(
+            names = "--no1014blocking",
+            description =
+                    "Neither file is in 1014 byte blocks. The same as passing VBS for both "
+                            + "formats, and it wins if both are given.")
+    boolean no1014blocking;
+
+    @Option(
             names = "--debug",
             description = "Print the full stack trace when something goes wrong.")
     boolean debug;
@@ -64,10 +71,20 @@ class EncodeOptions implements FileCommand.InputOptions {
         return CommonOptions.charset(inEncoding);
     }
 
-    /** Whether the input file is expected in 1014 byte blocks. */
+    /**
+     * Whether the input file is expected in 1014 byte blocks.
+     *
+     * <p>{@code --no1014blocking} is the older way of saying it and covers both files at once, so
+     * it wins over the format options, as it does in cardutil.
+     */
     @Override
     public boolean blocked() {
-        return inFormat.blocked();
+        return !no1014blocking && inFormat.blocked();
+    }
+
+    /** Whether the output file is written in 1014 byte blocks. */
+    boolean outputBlocked() {
+        return !no1014blocking && outFormat.blocked();
     }
 
     @Override

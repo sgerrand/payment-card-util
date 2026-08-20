@@ -235,7 +235,9 @@ Everything else matches byte for byte. These do not, and each is deliberate.
   of the bitmap, so a missing or short one shifts the rest of the record along.
   Writing it out is refused rather than producing a file nothing can read.
 - **`--in-format` and `--out-format` take `VBS` or `BLOCKED_1014`,** where
-  cardutil takes `vbs` or `1014`.
+  cardutil takes `vbs` or `1014`. Every tool also takes `--no1014blocking`, as
+  cardutil's do; on the encoders it covers both files and wins over the format
+  options.
 
 ## Proving it against cardutil
 

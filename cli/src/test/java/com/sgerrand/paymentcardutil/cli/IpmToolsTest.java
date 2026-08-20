@@ -151,6 +151,90 @@ class IpmToolsTest {
     }
 
     @Test
+    void encodeTakesTheOlderBlockingFlagToo() throws IOException {
+        // cardutil's encode tools accept --no1014blocking alongside the format
+        // options, and it wins, covering both files at once.
+        Path unblocked = directory.resolve("plain.ipm");
+        try (OutputStream out = Files.newOutputStream(unblocked);
+                IpmWriter writer = IpmWriter.of(out)) {
+            writer.writeAll(MESSAGES);
+        }
+        Path encoded = directory.resolve("still-plain.ipm");
+
+        assertEquals(
+                0,
+                run(
+                        "mci-ipm-encode",
+                        unblocked.toString(),
+                        "-o",
+                        encoded.toString(),
+                        "--no1014blocking",
+                        "--in-encoding",
+                        "latin_1"));
+
+        assertEquals(
+                MESSAGES.size(),
+                readMessages(encoded, Iso8583Options.defaults(), false).size(),
+                "read back as VBS, so neither side was blocked");
+    }
+
+    @Test
+    void theOlderBlockingFlagWinsOverTheFormatOptions() throws IOException {
+        Path unblocked = directory.resolve("plain2.ipm");
+        try (OutputStream out = Files.newOutputStream(unblocked);
+                IpmWriter writer = IpmWriter.of(out)) {
+            writer.writeAll(MESSAGES);
+        }
+        Path encoded = directory.resolve("still-plain2.ipm");
+
+        assertEquals(
+                0,
+                run(
+                        "mci-ipm-encode",
+                        unblocked.toString(),
+                        "-o",
+                        encoded.toString(),
+                        "--no1014blocking",
+                        "--in-format",
+                        "BLOCKED_1014",
+                        "--out-format",
+                        "BLOCKED_1014",
+                        "--in-encoding",
+                        "latin_1"));
+
+        assertEquals(
+                MESSAGES.size(),
+                readMessages(encoded, Iso8583Options.defaults(), false).size(),
+                "the older flag decides, whatever the formats say");
+    }
+
+    @Test
+    void paramEncodeTakesTheOlderBlockingFlagToo() throws IOException {
+        Path paramFile = directory.resolve("plain-params.ipm");
+        try (OutputStream out = Files.newOutputStream(paramFile);
+                VbsWriter writer = VbsWriter.of(out)) {
+            writer.write("IP0000T1 FIRST RECORD".getBytes(CommonOptions.charset("cp500")));
+        }
+        Path encoded = directory.resolve("plain-params.out");
+
+        assertEquals(
+                0,
+                run(
+                        "mci-ipm-param-encode",
+                        paramFile.toString(),
+                        "-o",
+                        encoded.toString(),
+                        "--no1014blocking"));
+
+        try (InputStream in = Files.newInputStream(encoded);
+                VbsReader reader = VbsReader.of(in)) {
+            assertEquals(
+                    "IP0000T1 FIRST RECORD",
+                    new String(reader.next(), StandardCharsets.ISO_8859_1));
+        }
+    }
+
+    @Test
     void paramEncodeChangesTheCharacterSet() throws IOException {
         Path paramFile = writeParamFile();
         Path encoded = directory.resolve("params.out");

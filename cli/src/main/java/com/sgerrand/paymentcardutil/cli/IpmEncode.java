@@ -45,9 +45,8 @@ final class IpmEncode implements Callable<Integer>, FileCommand {
         int count = 0;
         try (InputStream in = Files.newInputStream(inFile);
                 OutputStream stream = Files.newOutputStream(out);
-                IpmReader reader = IpmReader.open(in, readOptions, options.inFormat.blocked());
-                IpmWriter writer =
-                        IpmWriter.open(stream, writeOptions, options.outFormat.blocked())) {
+                IpmReader reader = IpmReader.open(in, readOptions, options.blocked());
+                IpmWriter writer = IpmWriter.open(stream, writeOptions, options.outputBlocked())) {
             for (Iso8583Message message : reader) {
                 writer.write(message);
                 count++;
