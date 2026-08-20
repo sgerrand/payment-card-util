@@ -20,6 +20,16 @@
   </Match>
 
   <!--
+    The README examples, copied out so that a change leaving the docs behind
+    stops the build. They are snippets: they call a method to show what it is
+    called and drop the answer, which is the whole point of them and is what
+    SpotBugs is objecting to. Nothing here runs.
+  -->
+  <Match>
+    <Class name="com.sgerrand.paymentcardutil.ReadmeExamples"/>
+  </Match>
+
+  <!--
     picocli builds its command tree from an annotated object, so CommandLine has
     to be handed an instance. The class holding the subcommands has nothing but
     main and nested types of its own, which is what SpotBugs is objecting to,

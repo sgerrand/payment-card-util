@@ -144,7 +144,7 @@ These caused real bugs or would have. Do not "simplify" them.
 
 ## Deliberate divergences from cardutil
 
-Seven, each listed in the README with its reason. Do not close them in the name
+Eight, each listed in the README with its reason. Do not close them in the name
 of parity without checking there first — each exists because cardutil's behaviour
 is wrong or unsafe. The one most likely to surprise: `mci-ipm-to-csv` masks card
 numbers unless `--unmask-pan` is passed, while the library itself never masks —

@@ -248,6 +248,11 @@ Everything else matches byte for byte. These do not, and each is deliberate.
   cardutil takes `vbs` or `1014`. Every tool also takes `--no1014blocking`, as
   cardutil's do; on the encoders it covers both files and wins over the format
   options.
+- **`mci-ipm-param-encode` takes `--config-file`,** which cardutil's does not.
+  Records are copied as they stand, so the only thing read from the file is how
+  long a record may be before the file is called damaged. Without it that limit
+  could only be moved by the `CARDUTIL_CONFIG` environment variable, while every
+  other tool could be pointed at a file.
 
 ## Proving it against cardutil
 
