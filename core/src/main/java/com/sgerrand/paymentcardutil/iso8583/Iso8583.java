@@ -102,7 +102,11 @@ public final class Iso8583 {
                                                     "No layout configured for DE" + de,
                                                     message,
                                                     null));
-            pointer += readField(de, field, body, pointer, options, builder);
+            try {
+                pointer += readField(de, field, body, pointer, options, builder);
+            } catch (Iso8583Exception problem) {
+                throw withBytes(problem, message);
+            }
         }
 
         if (pointer != body.length) {
@@ -201,6 +205,19 @@ public final class Iso8583 {
             throw new Iso8583Exception("Message type indicator is not a number: " + mti, e);
         }
         return mti;
+    }
+
+    /**
+     * The same failure, carrying the bytes it happened in.
+     *
+     * <p>A codec pulling a field apart sees only the field, so what it throws names the trouble but
+     * cannot say where in the record it sits. Reporting a bad file is most of what these exceptions
+     * are for, so the reader that does have the bytes puts them in.
+     */
+    private static Iso8583Exception withBytes(Iso8583Exception problem, byte[] message) {
+        return problem.binaryContext().isPresent()
+                ? problem
+                : new Iso8583Exception(problem.getMessage(), message, problem);
     }
 
     private static Bitmap readBitmap(byte[] message, Iso8583Options options) {

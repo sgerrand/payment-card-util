@@ -142,8 +142,12 @@ not even for a field the layout marks `PAN` — so files stay round trip safe.
 - Javadoc explains *why*, in plain English, and comments mark the places where
   cardutil's behaviour is being matched deliberately.
 - Anything holding a pin or a card number masks or omits it in `toString()`.
-- Data problems throw `PaymentCardException` (unchecked, carries the offending
-  bytes and record number); real I/O failures stay `IOException`.
+- Data problems throw `PaymentCardException` (unchecked); real I/O failures stay
+  `IOException`. It carries the bytes that would not read, which the parser
+  fills in even when a codec deep inside raised the problem, and the record
+  number, which only `IpmReader` and `IpmWriter` know and so add as the message
+  passes them. A lone `Iso8583.parse` has no record number, and a write failure
+  has no bytes, because nothing was written.
 - `.gitignore` blocks `*.ipm` and `testdata/`. Test data uses published test card
   numbers only.
 

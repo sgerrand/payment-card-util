@@ -1,5 +1,6 @@
 package com.sgerrand.paymentcardutil.ipm;
 
+import com.sgerrand.paymentcardutil.PaymentCardException;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
@@ -25,6 +26,8 @@ public final class IpmWriter implements java.io.Closeable {
 
     private final VbsWriter records;
     private final Iso8583Options options;
+
+    private int recordNumber;
 
     private IpmWriter(OutputStream out, Iso8583Options options, boolean blocked) {
         this.records = blocked ? VbsWriter.blocked(out) : VbsWriter.of(out);
@@ -58,7 +61,17 @@ public final class IpmWriter implements java.io.Closeable {
 
     /** Adds a message to the file. */
     public void write(Iso8583Message message) throws IOException {
-        records.write(Iso8583.serialize(message, options));
+        byte[] record;
+        try {
+            record = Iso8583.serialize(message, options);
+        } catch (PaymentCardException e) {
+            // Nothing was written, so there are no offending bytes to hand
+            // back. Which message in the run it was is still worth saying: a
+            // file built from a thousand CSV rows names the row that is wrong.
+            throw new IpmDataException(e.getMessage(), null, recordNumber + 1, e);
+        }
+        records.write(record);
+        recordNumber++;
     }
 
     /** Adds several messages. */

@@ -87,11 +87,12 @@ public final class IpmReader
         try {
             return Iso8583.parse(record, options);
         } catch (PaymentCardException e) {
+            // The parser said what is wrong but has no idea which record it was
+            // reading; that is this reader's half of the story. Keeping the
+            // parser's own words means the report leads with the reason rather
+            // than with a sentence saying a message could not be read.
             throw new IpmDataException(
-                    "Cannot read the ISO 8583 message in this record",
-                    records.lastRecord(),
-                    records.recordNumber(),
-                    e);
+                    e.getMessage(), records.lastRecord(), records.recordNumber(), e);
         }
     }
 
