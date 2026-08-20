@@ -29,97 +29,97 @@ final class DefaultConfig {
     private static Map<Integer, FieldConfig> bitConfig() {
         Map<Integer, FieldConfig> fields = new LinkedHashMap<>();
         fields.put(1, new FieldConfig(
-                "Bitmap secondary", FieldType.FIXED, 8, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Bitmap secondary", FieldType.FIXED, 8, ValueType.TEXT, null, null, null));
         fields.put(2, new FieldConfig(
-                "PAN", FieldType.LLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "PAN", FieldType.LLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(3, new FieldConfig(
-                "Processing code", FieldType.FIXED, 6, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Processing code", FieldType.FIXED, 6, ValueType.TEXT, null, null, null));
         fields.put(4, new FieldConfig(
-                "Amount transaction", FieldType.FIXED, 12, ValueType.LONG, null, FieldProcessor.NONE, null));
+                "Amount transaction", FieldType.FIXED, 12, ValueType.LONG, null, null, null));
         fields.put(5, new FieldConfig(
-                "Amount, Reconciliation", FieldType.FIXED, 12, ValueType.LONG, null, FieldProcessor.NONE, null));
+                "Amount, Reconciliation", FieldType.FIXED, 12, ValueType.LONG, null, null, null));
         fields.put(6, new FieldConfig(
-                "Amount, Cardholder billing", FieldType.FIXED, 12, ValueType.LONG, null, FieldProcessor.NONE, null));
+                "Amount, Cardholder billing", FieldType.FIXED, 12, ValueType.LONG, null, null, null));
         fields.put(9, new FieldConfig(
-                "Conversion rate, Reconciliation", FieldType.FIXED, 8, ValueType.LONG, null, FieldProcessor.NONE, null));
+                "Conversion rate, Reconciliation", FieldType.FIXED, 8, ValueType.LONG, null, null, null));
         fields.put(10, new FieldConfig(
-                "Conversion rate, Cardholder billing", FieldType.FIXED, 8, ValueType.LONG, null, FieldProcessor.NONE, null));
+                "Conversion rate, Cardholder billing", FieldType.FIXED, 8, ValueType.LONG, null, null, null));
         fields.put(12, new FieldConfig(
-                "Date/Time local transaction", FieldType.FIXED, 12, ValueType.DATETIME, "%y%m%d%H%M%S", FieldProcessor.NONE, null));
+                "Date/Time local transaction", FieldType.FIXED, 12, ValueType.DATETIME, "%y%m%d%H%M%S", null, null));
         fields.put(14, new FieldConfig(
-                "Expiration date", FieldType.FIXED, 4, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Expiration date", FieldType.FIXED, 4, ValueType.TEXT, null, null, null));
         fields.put(22, new FieldConfig(
-                "Point of service data code", FieldType.FIXED, 12, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Point of service data code", FieldType.FIXED, 12, ValueType.TEXT, null, null, null));
         fields.put(23, new FieldConfig(
-                "Card sequence number", FieldType.FIXED, 3, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Card sequence number", FieldType.FIXED, 3, ValueType.TEXT, null, null, null));
         fields.put(24, new FieldConfig(
-                "Function code", FieldType.FIXED, 3, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Function code", FieldType.FIXED, 3, ValueType.TEXT, null, null, null));
         fields.put(25, new FieldConfig(
-                "Message reason code", FieldType.FIXED, 4, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Message reason code", FieldType.FIXED, 4, ValueType.TEXT, null, null, null));
         fields.put(26, new FieldConfig(
-                "Card acceptor business code", FieldType.FIXED, 4, ValueType.LONG, null, FieldProcessor.NONE, null));
+                "Card acceptor business code", FieldType.FIXED, 4, ValueType.LONG, null, null, null));
         fields.put(30, new FieldConfig(
-                "Amounts, original", FieldType.FIXED, 24, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Amounts, original", FieldType.FIXED, 24, ValueType.TEXT, null, null, null));
         fields.put(31, new FieldConfig(
-                "Acquirer reference data", FieldType.LLVAR, 23, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Acquirer reference data", FieldType.LLVAR, 23, ValueType.TEXT, null, null, null));
         fields.put(32, new FieldConfig(
-                "Acquiring institution ID code", FieldType.LLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Acquiring institution ID code", FieldType.LLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(33, new FieldConfig(
-                "Forwarding institution ID code", FieldType.LLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Forwarding institution ID code", FieldType.LLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(37, new FieldConfig(
-                "Retrieval reference number", FieldType.FIXED, 12, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Retrieval reference number", FieldType.FIXED, 12, ValueType.TEXT, null, null, null));
         fields.put(38, new FieldConfig(
-                "Approval code", FieldType.FIXED, 6, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Approval code", FieldType.FIXED, 6, ValueType.TEXT, null, null, null));
         fields.put(40, new FieldConfig(
-                "Service code", FieldType.FIXED, 3, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Service code", FieldType.FIXED, 3, ValueType.TEXT, null, null, null));
         fields.put(41, new FieldConfig(
-                "Card acceptor terminal ID", FieldType.FIXED, 8, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Card acceptor terminal ID", FieldType.FIXED, 8, ValueType.TEXT, null, null, null));
         fields.put(42, new FieldConfig(
-                "Card acceptor Id", FieldType.FIXED, 15, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Card acceptor Id", FieldType.FIXED, 15, ValueType.TEXT, null, null, null));
         fields.put(43, new FieldConfig(
-                "Card acceptor name/location", FieldType.LLVAR, 0, ValueType.TEXT, null, FieldProcessor.DE43, "(?P<DE43_NAME>.+?) *\\\\(?P<DE43_ADDRESS>.+?) *\\\\(?P<DE43_SUBURB>.+?) *\\\\(?P<DE43_POSTCODE>.{10})(?P<DE43_STATE>.{3})(?P<DE43_COUNTRY>\\S{3})$"));
+                "Card acceptor name/location", FieldType.LLVAR, 0, ValueType.TEXT, null, FieldProcessors.DE43, "(?P<DE43_NAME>.+?) *\\\\(?P<DE43_ADDRESS>.+?) *\\\\(?P<DE43_SUBURB>.+?) *\\\\(?P<DE43_POSTCODE>.{10})(?P<DE43_STATE>.{3})(?P<DE43_COUNTRY>\\S{3})$"));
         fields.put(48, new FieldConfig(
-                "Additional data", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.PDS, null));
+                "Additional data", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessors.PDS, null));
         fields.put(49, new FieldConfig(
-                "Currency code, Transaction", FieldType.FIXED, 3, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Currency code, Transaction", FieldType.FIXED, 3, ValueType.TEXT, null, null, null));
         fields.put(50, new FieldConfig(
-                "Currency code, Reconciliation", FieldType.FIXED, 3, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Currency code, Reconciliation", FieldType.FIXED, 3, ValueType.TEXT, null, null, null));
         fields.put(51, new FieldConfig(
-                "Currency code, Cardholder billing", FieldType.FIXED, 3, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Currency code, Cardholder billing", FieldType.FIXED, 3, ValueType.TEXT, null, null, null));
         fields.put(54, new FieldConfig(
-                "Amounts, additional", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Amounts, additional", FieldType.LLLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(55, new FieldConfig(
-                "ICC system related data", FieldType.LLLVAR, 255, ValueType.TEXT, null, FieldProcessor.ICC, "on_error=WARN"));
+                "ICC system related data", FieldType.LLLVAR, 255, ValueType.TEXT, null, FieldProcessors.ICC, "on_error=WARN"));
         fields.put(62, new FieldConfig(
-                "Additional data 2", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.PDS, null));
+                "Additional data 2", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessors.PDS, null));
         fields.put(63, new FieldConfig(
-                "Transaction lifecycle Id", FieldType.LLLVAR, 16, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Transaction lifecycle Id", FieldType.LLLVAR, 16, ValueType.TEXT, null, null, null));
         fields.put(71, new FieldConfig(
-                "Message number", FieldType.FIXED, 8, ValueType.LONG, null, FieldProcessor.NONE, null));
+                "Message number", FieldType.FIXED, 8, ValueType.LONG, null, null, null));
         fields.put(72, new FieldConfig(
-                "Data record", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Data record", FieldType.LLLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(73, new FieldConfig(
-                "Date, Action", FieldType.FIXED, 6, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Date, Action", FieldType.FIXED, 6, ValueType.TEXT, null, null, null));
         fields.put(93, new FieldConfig(
-                "Transaction destination institution ID", FieldType.LLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Transaction destination institution ID", FieldType.LLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(94, new FieldConfig(
-                "Transaction originator institution ID", FieldType.LLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Transaction originator institution ID", FieldType.LLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(95, new FieldConfig(
-                "Card issuer reference data", FieldType.LLVAR, 10, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Card issuer reference data", FieldType.LLVAR, 10, ValueType.TEXT, null, null, null));
         fields.put(100, new FieldConfig(
-                "Receiving institution ID", FieldType.LLVAR, 11, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Receiving institution ID", FieldType.LLVAR, 11, ValueType.TEXT, null, null, null));
         fields.put(105, new FieldConfig(
-                "Multi-Use Transaction Identification Data", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Multi-Use Transaction Identification Data", FieldType.LLLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(111, new FieldConfig(
-                "Amount, currency conversion assignment", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Amount, currency conversion assignment", FieldType.LLLVAR, 0, ValueType.TEXT, null, null, null));
         fields.put(123, new FieldConfig(
-                "Additional data 3", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.PDS, null));
+                "Additional data 3", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessors.PDS, null));
         fields.put(124, new FieldConfig(
-                "Additional data 4", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.PDS, null));
+                "Additional data 4", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessors.PDS, null));
         fields.put(125, new FieldConfig(
-                "Additional data 5", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.PDS, null));
+                "Additional data 5", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessors.PDS, null));
         fields.put(127, new FieldConfig(
-                "Network data", FieldType.LLLVAR, 0, ValueType.TEXT, null, FieldProcessor.NONE, null));
+                "Network data", FieldType.LLLVAR, 0, ValueType.TEXT, null, null, null));
         return fields;
     }
 

@@ -2,7 +2,7 @@ package com.sgerrand.paymentcardutil.iso8583;
 
 import com.sgerrand.paymentcardutil.config.DateFormats;
 import com.sgerrand.paymentcardutil.config.FieldConfig;
-import com.sgerrand.paymentcardutil.config.FieldProcessor;
+import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
@@ -429,7 +429,7 @@ public final class Iso8583 {
         if (groups.isEmpty()) {
             return;
         }
-        List<Integer> carriers = config.bitsWithProcessor(FieldProcessor.PDS);
+        List<Integer> carriers = config.bitsWithProcessor(FieldProcessors.PDS);
         if (groups.size() > carriers.size()) {
             throw new Iso8583Exception(
                     "The message holds more private data than fits: "

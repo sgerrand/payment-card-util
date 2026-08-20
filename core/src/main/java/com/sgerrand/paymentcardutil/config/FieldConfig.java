@@ -20,7 +20,7 @@ public record FieldConfig(
         int length,
         ValueType valueType,
         String dateFormat,
-        FieldProcessor processor,
+        String processor,
         String processorConfig) {
 
     /** The date pattern used when a datetime field does not name one. */
@@ -30,7 +30,6 @@ public record FieldConfig(
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(valueType, "valueType");
-        Objects.requireNonNull(processor, "processor");
         if (length < 0) {
             throw new IllegalArgumentException("Field length must not be negative: " + length);
         }
@@ -38,7 +37,7 @@ public record FieldConfig(
 
     /** A plain text field with no extra handling. */
     public static FieldConfig of(String name, FieldType type, int length) {
-        return new FieldConfig(name, type, length, ValueType.TEXT, null, FieldProcessor.NONE, null);
+        return new FieldConfig(name, type, length, ValueType.TEXT, null, null, null);
     }
 
     /** How many bytes the field's length prefix takes up: 0 for a fixed field. */

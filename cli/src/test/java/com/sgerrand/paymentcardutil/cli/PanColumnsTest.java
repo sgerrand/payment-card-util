@@ -3,7 +3,7 @@ package com.sgerrand.paymentcardutil.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.sgerrand.paymentcardutil.config.FieldConfig;
-import com.sgerrand.paymentcardutil.config.FieldProcessor;
+import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.FieldType;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.config.ValueType;
@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
  */
 class PanColumnsTest {
 
-    private static FieldConfig field(String name, FieldProcessor processor) {
+    private static FieldConfig field(String name, String processor) {
         return new FieldConfig(name, FieldType.LLVAR, 19, ValueType.TEXT, null, processor, null);
     }
 
@@ -26,7 +26,7 @@ class PanColumnsTest {
     void aMarkedElementIsMaskedWhateverItIsCalled() {
         IsoConfig config =
                 IsoConfig.defaults().toBuilder()
-                        .field(2, field("Primary Account Number", FieldProcessor.PAN))
+                        .field(2, field("Primary Account Number", FieldProcessors.PAN))
                         .build();
 
         assertEquals(List.of("DE2"), IpmToCsv.panColumns(config));
@@ -36,7 +36,7 @@ class PanColumnsTest {
     void anElementHoldingOnlyAPrefixIsMarkedToo() {
         IsoConfig config =
                 IsoConfig.defaults().toBuilder()
-                        .field(2, field("Numero de carte", FieldProcessor.PAN_PREFIX))
+                        .field(2, field("Numero de carte", FieldProcessors.PAN_PREFIX))
                         .build();
 
         assertEquals(List.of("DE2"), IpmToCsv.panColumns(config));
@@ -46,9 +46,9 @@ class PanColumnsTest {
     void severalMarkedElementsComeBackInFieldOrder() {
         IsoConfig config =
                 IsoConfig.defaults().toBuilder()
-                        .field(34, field("Card number, extended", FieldProcessor.PAN))
-                        .field(2, field("Card number", FieldProcessor.PAN_PREFIX))
-                        .field(35, field("Track 2 data", FieldProcessor.NONE))
+                        .field(34, field("Card number, extended", FieldProcessors.PAN))
+                        .field(2, field("Card number", FieldProcessors.PAN_PREFIX))
+                        .field(35, field("Track 2 data", null))
                         .build();
 
         assertEquals(List.of("DE2", "DE34"), IpmToCsv.panColumns(config));
@@ -65,7 +65,7 @@ class PanColumnsTest {
     void bothSignalsCount() {
         IsoConfig config =
                 IsoConfig.defaults().toBuilder()
-                        .field(34, field("Card number, extended", FieldProcessor.PAN))
+                        .field(34, field("Card number, extended", FieldProcessors.PAN))
                         .build();
 
         // DE34 is marked outright; DE2 is still called PAN in the built-in

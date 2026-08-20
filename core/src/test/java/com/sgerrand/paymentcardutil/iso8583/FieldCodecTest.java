@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sgerrand.paymentcardutil.config.FieldConfig;
-import com.sgerrand.paymentcardutil.config.FieldProcessor;
+import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.FieldType;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.config.ValueType;
@@ -32,7 +32,7 @@ class FieldCodecTest {
                 return parts;
             };
 
-    private static Iso8583Options optionsWith(FieldProcessor processor, FieldCodec codec) {
+    private static Iso8583Options optionsWith(String processor, FieldCodec codec) {
         IsoConfig config =
                 IsoConfig.defaults().toBuilder()
                         .field(
@@ -57,7 +57,7 @@ class FieldCodecTest {
 
     @Test
     void aCodecOfYourOwnPullsTheFieldApart() {
-        Iso8583Message parsed = parsedWith(optionsWith(FieldProcessor.DE43, HALVES));
+        Iso8583Message parsed = parsedWith(optionsWith(FieldProcessors.DE43, HALVES));
 
         assertEquals("REF000012345", parsed.text("DE37").orElseThrow(), "the field itself");
         assertEquals("REF000", parsed.text("DE37_LEFT").orElseThrow());
@@ -66,14 +66,47 @@ class FieldCodecTest {
 
     @Test
     void theBuiltInCodecIsUsedWhereNoneWasReplaced() {
-        Iso8583Options options = optionsWith(FieldProcessor.DE43, HALVES);
+        Iso8583Options options = optionsWith(FieldProcessors.DE43, HALVES);
 
         // DE 48 still carries private data the way the built in layout says.
         assertEquals(
-                FieldProcessor.PDS,
+                FieldProcessors.PDS,
                 options.config().field(48).orElseThrow().processor(),
                 "the layout is otherwise untouched");
-        assertTrue(options.codec(FieldProcessor.PDS) != null, "and it still has its codec");
+        assertTrue(options.codec(FieldProcessors.PDS) != null, "and it still has its codec");
+    }
+
+    @Test
+    void aLayoutCanNameAProcessorThisLibraryHasNeverHeardOf() {
+        Iso8583Message parsed = parsedWith(optionsWith("BRANCH-CODE", HALVES));
+
+        assertEquals("REF000", parsed.text("DE37_LEFT").orElseThrow());
+        assertEquals("012345", parsed.text("DE37_RIGHT").orElseThrow());
+    }
+
+    @Test
+    void aNameNobodyHasACodecForLeavesTheFieldAlone() {
+        // cardutil does the same: a processor it does not recognise falls
+        // through its own list rather than stopping the read.
+        IsoConfig config =
+                IsoConfig.defaults().toBuilder()
+                        .field(
+                                37,
+                                new FieldConfig(
+                                        "Retrieval reference number",
+                                        FieldType.FIXED,
+                                        12,
+                                        ValueType.TEXT,
+                                        null,
+                                        "NOBODY-KNOWS-THIS",
+                                        null))
+                        .build();
+        Iso8583Options options = Iso8583Options.defaults().withConfig(config);
+
+        Iso8583Message parsed = parsedWith(options);
+
+        assertEquals("REF000012345", parsed.text("DE37").orElseThrow());
+        assertEquals(2, parsed.values().size(), "the message type and the field, nothing else");
     }
 
     @Test
@@ -92,7 +125,7 @@ class FieldCodecTest {
                     }
                 };
 
-        Iso8583Message parsed = parsedWith(optionsWith(FieldProcessor.DE43, binary));
+        Iso8583Message parsed = parsedWith(optionsWith(FieldProcessors.DE43, binary));
 
         assertInstanceOf(byte[].class, parsed.value("DE37").orElseThrow(), "the field's own value");
         assertArrayEquals(

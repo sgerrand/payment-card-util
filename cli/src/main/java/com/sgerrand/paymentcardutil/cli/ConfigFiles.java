@@ -3,7 +3,6 @@ package com.sgerrand.paymentcardutil.cli;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgerrand.paymentcardutil.config.FieldConfig;
-import com.sgerrand.paymentcardutil.config.FieldProcessor;
 import com.sgerrand.paymentcardutil.config.FieldType;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.config.ParamTable;
@@ -118,8 +117,7 @@ final class ConfigFiles {
                                             ValueType.fromPythonType(
                                                     text(field, "field_python_type", null)),
                                             text(field, "field_date_format", null),
-                                            FieldProcessor.fromName(
-                                                    text(field, "field_processor", null)),
+                                            text(field, "field_processor", null),
                                             text(field, "field_processor_config", null)));
                         });
         return fields;

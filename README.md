@@ -185,18 +185,28 @@ The `CARDUTIL_CONFIG` environment variable also works: point it at a directory
 holding `cardutil.json`.
 
 A layout that packs something this library has never seen inside an element
-needs a `FieldCodec` rather than a change to the parser:
+needs a `FieldCodec` rather than a change to the parser. Name the processor in
+the config file:
+
+```json
+{"bit_config": {"43": {"field_name": "Card acceptor", "field_type": "LLVAR",
+                       "field_length": 0, "field_processor": "BRANCH-CODE"}}}
+```
+
+then register a codec under that name:
 
 ```java
 Iso8583Options options = Iso8583Options.defaults()
         .withConfig(myLayout)
-        .withCodec(FieldProcessor.DE43, (bit, raw, text, field) -> Map.of(
+        .withCodec("BRANCH-CODE", (bit, raw, text, field) -> Map.of(
                 "DE" + bit + "_BRANCH", text.substring(0, 4)));
 ```
 
-The reader asks the settings which codec a field has, so it has no list of its
-own to add to. The names are cardutil's five, since that is what a config file
-can say.
+The name is yours to choose. `FieldProcessors` holds the five cardutil knows,
+and the reader has no list of its own to add to: it asks the settings which
+codec a field's name maps to. A name nothing has a codec for leaves the field
+as it stands, which is what cardutil does with a processor it does not
+recognise.
 
 A config file says what is different, not what the whole layout is. Naming one
 data element changes that element and leaves the rest of the built in layout

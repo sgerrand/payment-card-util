@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.sgerrand.paymentcardutil.config.FieldConfig;
-import com.sgerrand.paymentcardutil.config.FieldProcessor;
+import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.FieldType;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.config.ValueType;
@@ -22,7 +22,7 @@ class PanProcessorTest {
 
     private static final String CARD_NUMBER = "4444555566667777";
 
-    private static IsoConfig config(FieldProcessor processor) {
+    private static IsoConfig config(String processor) {
         return IsoConfig.defaults().toBuilder()
                 .field(
                         2,
@@ -31,7 +31,7 @@ class PanProcessorTest {
                 .build();
     }
 
-    private static Iso8583Options options(FieldProcessor processor) {
+    private static Iso8583Options options(String processor) {
         return Iso8583Options.defaults().withConfig(config(processor));
     }
 
@@ -41,7 +41,7 @@ class PanProcessorTest {
 
     @Test
     void aMarkedFieldIsReadAsTheFileWroteIt() {
-        Iso8583Options options = options(FieldProcessor.PAN);
+        Iso8583Options options = options(FieldProcessors.PAN);
         byte[] raw = Iso8583.serialize(message(), options);
 
         assertEquals(CARD_NUMBER, Iso8583.parse(raw, options).text("DE2").orElseThrow());
@@ -49,7 +49,7 @@ class PanProcessorTest {
 
     @Test
     void aFieldMarkedAsAPrefixIsNotCutShortEither() {
-        Iso8583Options options = options(FieldProcessor.PAN_PREFIX);
+        Iso8583Options options = options(FieldProcessors.PAN_PREFIX);
         byte[] raw = Iso8583.serialize(message(), options);
 
         assertEquals(CARD_NUMBER, Iso8583.parse(raw, options).text("DE2").orElseThrow());
@@ -57,7 +57,7 @@ class PanProcessorTest {
 
     @Test
     void aMarkedFieldWritesBackToTheSameBytes() {
-        Iso8583Options options = options(FieldProcessor.PAN);
+        Iso8583Options options = options(FieldProcessors.PAN);
         byte[] raw = Iso8583.serialize(message(), options);
 
         assertArrayEquals(raw, Iso8583.serialize(Iso8583.parse(raw, options), options));

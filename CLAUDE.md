@@ -96,8 +96,9 @@ layered over it. The key naming is not cosmetic — parity depends on it, and th
 CSV column list in the config refers to those keys.
 
 **Subfield extraction happens during parse, through a codec the reader looks
-up.** A field's `FieldProcessor` names a `FieldCodec`, and `Iso8583.readField`
-asks `Iso8583Options.codec` for it rather than testing the processor itself:
+up.** A field's processor is a name — a plain string, as in a cardutil config
+file — and `Iso8583.readField` asks `Iso8583Options.codec` for the `FieldCodec`
+of that name rather than testing the processor itself:
 `PDS` breaks a field into `PDSxxxx` entries (`PdsCodec`), `ICC` into `TAGxxxx`
 (`IccCodec`), `DE43` into named parts via a regex (`De43Codec`), `PAN` and
 `PAN-PREFIX` only mark a card number. Those extra keys sit alongside the `DEn`
@@ -105,12 +106,13 @@ value in the same map. A codec that says `readsRawBytes` keeps the field's bytes
 as its value instead of text, which is how chip data stays binary; that is
 declared by the codec, not carved into the reader.
 
-`Iso8583Options.withCodec` puts a codec of your own in place of any of them, so
-reading a layout that packs something else inside an element takes a codec and a
-config naming it, not a change to the parser. Two limits: the vocabulary is
-cardutil's five names, since a config file names one of those, and a codec only
-unpacks — `Iso8583.packPdsFields` still repacks `PDSxxxx` values on the way out
-and nothing else has a matching packer.
+`FieldProcessors` holds the five names cardutil knows, but the vocabulary is
+open: a config file may name anything, and `Iso8583Options.withCodec` registers a codec
+under that name. A name nothing has a codec for leaves the field as it stands,
+which is what cardutil does with one it does not recognise — so a typo in a
+config quietly extracts nothing rather than failing. One limit remains: a codec
+only unpacks. `Iso8583.packPdsFields` still repacks `PDSxxxx` values on the way
+out and nothing else has a matching packer.
 
 **IPM files are two layers.** VBS framing (4 byte length, zero length record ends
 the file) in `VbsReader`/`VbsWriter`, and optional 1014 byte blocking in

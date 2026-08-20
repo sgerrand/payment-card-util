@@ -15,8 +15,9 @@ OUT = sys.argv[1]
 FIELD_TYPE = {'FIXED': 'FieldType.FIXED', 'LLVAR': 'FieldType.LLVAR', 'LLLVAR': 'FieldType.LLLVAR'}
 VALUE_TYPE = {None: 'ValueType.TEXT', 'int': 'ValueType.LONG', 'long': 'ValueType.LONG',
               'decimal': 'ValueType.DECIMAL', 'datetime': 'ValueType.DATETIME'}
-PROCESSOR = {None: 'FieldProcessor.NONE', 'PDS': 'FieldProcessor.PDS', 'DE43': 'FieldProcessor.DE43',
-             'ICC': 'FieldProcessor.ICC', 'PAN': 'FieldProcessor.PAN', 'PAN-PREFIX': 'FieldProcessor.PAN_PREFIX'}
+PROCESSOR = {None: 'null', 'PDS': 'FieldProcessors.PDS', 'DE43': 'FieldProcessors.DE43',
+             'ICC': 'FieldProcessors.ICC', 'PAN': 'FieldProcessors.PAN',
+             'PAN-PREFIX': 'FieldProcessors.PAN_PREFIX'}
 
 
 def jstr(value):

@@ -1,7 +1,7 @@
 package com.sgerrand.paymentcardutil.cli;
 
 import com.sgerrand.paymentcardutil.config.FieldConfig;
-import com.sgerrand.paymentcardutil.config.FieldProcessor;
+import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.ipm.IpmReader;
 import com.sgerrand.paymentcardutil.ipm.IpmWriter;
@@ -59,7 +59,7 @@ final class IpmEncode implements Callable<Integer>, FileCommand {
     /** The same layout with private data left packed as it was read. */
     static IsoConfig withoutPdsProcessing(IsoConfig config) {
         IsoConfig.Builder builder = config.toBuilder();
-        for (int bit : config.bitsWithProcessor(FieldProcessor.PDS)) {
+        for (int bit : config.bitsWithProcessor(FieldProcessors.PDS)) {
             FieldConfig field = config.bitConfig().get(bit);
             builder.field(
                     bit,
@@ -69,7 +69,7 @@ final class IpmEncode implements Callable<Integer>, FileCommand {
                             field.length(),
                             field.valueType(),
                             field.dateFormat(),
-                            FieldProcessor.NONE,
+                            null,
                             field.processorConfig()));
         }
         return builder.build();

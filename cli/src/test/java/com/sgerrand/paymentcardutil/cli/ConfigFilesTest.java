@@ -3,7 +3,7 @@ package com.sgerrand.paymentcardutil.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.sgerrand.paymentcardutil.config.FieldProcessor;
+import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import java.io.IOException;
 import java.util.List;
@@ -31,7 +31,7 @@ class ConfigFilesTest {
                         """);
 
         assertEquals("Card number", config.field(2).orElseThrow().name());
-        assertEquals(FieldProcessor.PAN, config.field(2).orElseThrow().processor());
+        assertEquals(FieldProcessors.PAN, config.field(2).orElseThrow().processor());
         assertEquals(
                 IsoConfig.defaults().bitConfig().size(),
                 config.bitConfig().size(),
@@ -60,6 +60,22 @@ class ConfigFilesTest {
         assertTrue(
                 config.parameterTables().size() >= IsoConfig.defaults().parameterTables().size(),
                 "the other tables stay");
+    }
+
+    @Test
+    void aProcessorNameThisLibraryDoesNotKnowIsCarriedThrough() throws IOException {
+        // The names are the config file's to choose. Reading a layout that packs
+        // something else inside an element takes a codec of that name, not a
+        // change to the parser, so the loader must not vet the name.
+        IsoConfig config =
+                parse(
+                        """
+                        {"bit_config": {"37": {"field_name": "Branch", "field_type": "FIXED",
+                                               "field_length": 12,
+                                               "field_processor": "BRANCH-CODE"}}}
+                        """);
+
+        assertEquals("BRANCH-CODE", config.field(37).orElseThrow().processor());
     }
 
     @Test

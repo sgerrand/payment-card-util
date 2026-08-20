@@ -1,7 +1,7 @@
 package com.sgerrand.paymentcardutil.cli;
 
 import com.sgerrand.paymentcardutil.card.Pan;
-import com.sgerrand.paymentcardutil.config.FieldProcessor;
+import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.ipm.IpmReader;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
@@ -28,8 +28,8 @@ import picocli.CommandLine.Parameters;
 final class IpmToCsv implements Callable<Integer>, FileCommand {
 
     /** The field processors that mark an element as holding a card number. */
-    private static final List<FieldProcessor> PAN_PROCESSORS =
-            List.of(FieldProcessor.PAN, FieldProcessor.PAN_PREFIX);
+    private static final List<String> PAN_PROCESSORS =
+            List.of(FieldProcessors.PAN, FieldProcessors.PAN_PREFIX);
 
     /** The element name that also marks a card number. See {@link #panColumns(IsoConfig)}. */
     private static final String PAN_FIELD_NAME = "PAN";
@@ -97,7 +97,11 @@ final class IpmToCsv implements Callable<Integer>, FileCommand {
         config.bitConfig()
                 .forEach(
                         (bit, field) -> {
-                            if (PAN_PROCESSORS.contains(field.processor())
+                            // Most elements name no processor at all, and an
+                            // immutable list will not even be asked whether it
+                            // holds null.
+                            if ((field.processor() != null
+                                            && PAN_PROCESSORS.contains(field.processor()))
                                     || PAN_FIELD_NAME.equalsIgnoreCase(field.name())) {
                                 columns.add(Iso8583Message.deKey(bit));
                             }

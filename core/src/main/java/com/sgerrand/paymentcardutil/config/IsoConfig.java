@@ -76,10 +76,12 @@ public final class IsoConfig {
      * <p>Which element carries private data, chip data or an acquirer address is a property of the
      * layout, so asking the config beats every caller walking {@link #bitConfig()} with its own
      * filter.
+     *
+     * @param processor a name from {@link FieldProcessors}, or one of your own
      */
-    public List<Integer> bitsWithProcessor(FieldProcessor processor) {
+    public List<Integer> bitsWithProcessor(String processor) {
         return bitConfig.entrySet().stream()
-                .filter(entry -> entry.getValue().processor() == processor)
+                .filter(entry -> processor.equals(entry.getValue().processor()))
                 .map(Map.Entry::getKey)
                 .toList();
     }
