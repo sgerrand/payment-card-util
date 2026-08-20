@@ -51,8 +51,10 @@ jobs:
 
       - name: Check the version matches the release tag
         run: |
+          # release-please tags as <package name>-v<version>, so the version
+          # is what follows the last "-v".
           tag='${{ github.event.release.tag_name }}'
-          expected="${tag#v}"
+          expected="${tag##*-v}"
           actual=$(mvn --batch-mode -q help:evaluate -Dexpression=project.version -DforceStdout)
 
           echo "Release tag: $tag"
@@ -89,11 +91,11 @@ jobs:
 
       - name: Say where it went
         run: |
-          version='${{ github.event.release.tag_name }}'
+          tag='${{ github.event.release.tag_name }}'
           {
             echo "## Published"
             echo ""
-            echo "\`com.sgerrand:payment-card-util:${version#v}\` is on Maven Central."
+            echo "\`com.sgerrand:payment-card-util:${tag##*-v}\` is on Maven Central."
             echo ""
             echo "It may take a few minutes to appear in search."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -130,7 +132,7 @@ jobs:
       - name: Attach the jar to the release
         run: |
           tag='${{ github.event.release.tag_name }}'
-          version="${tag#v}"
+          version="${tag##*-v}"
           jar="cli/target/payment-card-util-cli-${version}-all.jar"
 
           if [ ! -f "$jar" ]; then
