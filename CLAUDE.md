@@ -95,11 +95,22 @@ build one from a JSON file in cardutil's own shape (`ConfigFiles`).
 layered over it. The key naming is not cosmetic — parity depends on it, and the
 CSV column list in the config refers to those keys.
 
-**Subfield extraction happens during parse.** A `FieldProcessor` on a field pulls
-structure out of it as the message is read: `PDS` breaks a field into `PDSxxxx`
-entries (`PdsCodec`), `ICC` into `TAGxxxx` (`IccCodec`), `DE43` into named parts
-via a regex (`De43Codec`). Those extra keys sit alongside the raw `DEn` value in
-the same map.
+**Subfield extraction happens during parse, through a codec the reader looks
+up.** A field's `FieldProcessor` names a `FieldCodec`, and `Iso8583.readField`
+asks `Iso8583Options.codec` for it rather than testing the processor itself:
+`PDS` breaks a field into `PDSxxxx` entries (`PdsCodec`), `ICC` into `TAGxxxx`
+(`IccCodec`), `DE43` into named parts via a regex (`De43Codec`), `PAN` and
+`PAN-PREFIX` only mark a card number. Those extra keys sit alongside the `DEn`
+value in the same map. A codec that says `readsRawBytes` keeps the field's bytes
+as its value instead of text, which is how chip data stays binary; that is
+declared by the codec, not carved into the reader.
+
+`Iso8583Options.withCodec` puts a codec of your own in place of any of them, so
+reading a layout that packs something else inside an element takes a codec and a
+config naming it, not a change to the parser. Two limits: the vocabulary is
+cardutil's five names, since a config file names one of those, and a codec only
+unpacks — `Iso8583.packPdsFields` still repacks `PDSxxxx` values on the way out
+and nothing else has a matching packer.
 
 **IPM files are two layers.** VBS framing (4 byte length, zero length record ends
 the file) in `VbsReader`/`VbsWriter`, and optional 1014 byte blocking in

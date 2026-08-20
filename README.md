@@ -184,6 +184,20 @@ java -jar payment-card-util-cli-0.1.0-all.jar mci-ipm-to-csv clearing.ipm \
 The `CARDUTIL_CONFIG` environment variable also works: point it at a directory
 holding `cardutil.json`.
 
+A layout that packs something this library has never seen inside an element
+needs a `FieldCodec` rather than a change to the parser:
+
+```java
+Iso8583Options options = Iso8583Options.defaults()
+        .withConfig(myLayout)
+        .withCodec(FieldProcessor.DE43, (bit, raw, text, field) -> Map.of(
+                "DE" + bit + "_BRANCH", text.substring(0, 4)));
+```
+
+The reader asks the settings which codec a field has, so it has no list of its
+own to add to. The names are cardutil's five, since that is what a config file
+can say.
+
 A config file says what is different, not what the whole layout is. Naming one
 data element changes that element and leaves the rest of the built in layout
 alone, and the same goes for a parameter table. The exception is

@@ -295,35 +295,24 @@ public final class Iso8583 {
                 java.util.Arrays.copyOfRange(
                         body, Math.min(start, body.length), Math.max(start, end));
 
-        if (field.processor() == FieldProcessor.ICC) {
-            builder.put(Iso8583Message.deKey(bit), raw);
-            builder.putAll(IccCodec.unpack(bit, raw, field.processorConfig()));
-            return fieldLength + lengthSize;
-        }
-
-        // PAN and PAN_PREFIX only mark a field as holding a card number; they
-        // do not touch the value. cardutil masks and truncates here, which
-        // makes a file it has read impossible to write back unchanged, and
-        // leaves a caller no way to ask for the real value. Masking belongs to
-        // whatever shows the data, so mci-ipm-to-csv does it and --unmask-pan
-        // turns it off.
+        // What a field holds beyond its own value is the layout's business, not
+        // the reader's: the layout names a processor and that decides both how
+        // the value is read and what is pulled out of it.
+        FieldCodec codec = options.codec(field.processor());
         String text = new String(raw, options.charset());
 
-        builder.put(Iso8583Message.deKey(bit), toValue(bit, text, field));
+        builder.put(
+                Iso8583Message.deKey(bit), codec.readsRawBytes() ? raw : toValue(bit, text, field));
+        builder.putAll(codec.unpack(bit, raw, text, field));
 
-        switch (field.processor()) {
-            case PDS -> builder.putAll(PdsCodec.unpack(text));
-            case DE43 -> builder.putAll(De43Codec.unpack(text, field.processorConfig()));
-            default -> {
-                // Nothing further to pull out of this field.
-            }
-        }
         return fieldLength + lengthSize;
     }
 
     private static byte[] writeField(FieldConfig field, Object value, Charset charset) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
+        // A value that is still bytes came from a codec that said it reads raw
+        // bytes, so it goes back out as it came in.
         if (value instanceof byte[] bytes) {
             int length =
                     field.lengthSize() > 0 ? bytes.length : Math.min(field.length(), bytes.length);
