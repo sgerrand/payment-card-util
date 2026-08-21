@@ -126,6 +126,11 @@ the file) in `VbsReader`/`VbsWriter`, and optional 1014 byte blocking in
 8583 on top. `IpmParamReader` reads parameter extracts, whose records are fixed
 position text rather than messages.
 
+`ParseWriteBenchmark` in the `iso8583` tests times reading and writing one
+clearing message. It has no tests in it, so the build only compiles it. Run it
+before and after a change that claims to be faster; the class comment says how
+to point it at a released version in a worktree.
+
 ## Parity traps
 
 These caused real bugs or would have. Do not "simplify" them.

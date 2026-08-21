@@ -318,6 +318,22 @@ and lowest reporting threshold. What it is told to ignore lives in
 `config/spotbugs-exclude.xml`, each entry with a reason; nothing is waved
 through without one.
 
+Reading and writing messages is all these tools do, and a clearing file holds
+millions of records, so speed there is worth checking rather than believing.
+`ParseWriteBenchmark` times both against one clearing message. Nothing runs it
+during the build:
+
+```sh
+mvn -pl core test-compile
+java -cp core/target/classes:core/target/test-classes \
+    com.sgerrand.paymentcardutil.iso8583.ParseWriteBenchmark
+```
+
+To measure a change, build the version to compare against in a worktree and run
+the same class against each; the class comment says how. It is a stopwatch
+rather than a laboratory: enough to see a few per cent, not enough to argue
+about one.
+
 ## Releasing
 
 Releases are cut by [release-please](https://github.com/googleapis/release-please).
