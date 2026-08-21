@@ -24,6 +24,12 @@ public interface FieldCodec {
      * this is called, so what comes back is the parts pulled out of it: {@code PDS0158}, {@code
      * TAG9F02}, {@code DE43_NAME}. Returning a {@code DEn} key replaces the value there.
      *
+     * <p>What comes back is along for the ride. Writing a message puts the element's own value back
+     * on the wire and ignores the parts, so a file read with a codec of your own writes back
+     * unchanged. Private data is the one exception in the other direction: {@code PDSxxxx} values
+     * are packed into the elements set up to carry them, replacing what was there, which is what
+     * cardutil does and the only place it does it.
+     *
      * @param bit which data element this is, for error messages
      * @param raw the element's bytes as the file held them
      * @param text those bytes read in the message's character set

@@ -116,9 +116,14 @@ declared by the codec, not carved into the reader.
 open: a config file may name anything, and `Iso8583Options.withCodec` registers a codec
 under that name. A name nothing has a codec for leaves the field as it stands,
 which is what cardutil does with one it does not recognise — so a typo in a
-config quietly extracts nothing rather than failing. One limit remains: a codec
-only unpacks. `Iso8583.packPdsFields` still repacks `PDSxxxx` values on the way
-out and nothing else has a matching packer.
+config quietly extracts nothing rather than failing.
+
+A codec only unpacks, and that is the point rather than a gap: the parts it
+returns are along for the ride, the element's own value is what gets written,
+and so a file read with a codec of your own writes back byte for byte
+(`CustomCodecRoundTripTest`). The built in DE 43 codec behaves the same way.
+`Iso8583.packPdsFields` is the one thing that writes an element from its parts,
+which matches cardutil — it packs `PDSxxxx` and nothing else.
 
 **IPM files are two layers.** VBS framing (4 byte length, zero length record ends
 the file) in `VbsReader`/`VbsWriter`, and optional 1014 byte blocking in
