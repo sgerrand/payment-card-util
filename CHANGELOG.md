@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.1](https://github.com/sgerrand/payment-card-util/compare/payment-card-util-v0.1.0...payment-card-util-v0.1.1) (2026-08-21)
+
+
+### Performance Improvements
+
+* **iso8583:** read and write a record without copying it about ([#7](https://github.com/sgerrand/payment-card-util/issues/7)) ([05ff3d6](https://github.com/sgerrand/payment-card-util/commit/05ff3d698da470b0b268f533b0e2af4416b85f59))
+
+
+### Documentation
+
+* **ipm:** say where the parameter row shape comes from ([#9](https://github.com/sgerrand/payment-card-util/issues/9)) ([4c95804](https://github.com/sgerrand/payment-card-util/commit/4c95804045a90c61b9f541cde0568b62c2b1e496))
+
 ## 0.1.0 (2026-08-20)
 
 
