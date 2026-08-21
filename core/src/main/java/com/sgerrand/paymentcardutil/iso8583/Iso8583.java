@@ -5,6 +5,7 @@ import com.sgerrand.paymentcardutil.config.FieldConfig;
 import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -82,7 +83,10 @@ public final class Iso8583 {
         }
 
         Bitmap bitmap = readBitmap(message, options);
-        byte[] body = java.util.Arrays.copyOfRange(message, headerLength, message.length);
+        // The elements are read out of the record where they lie. Copying the
+        // body out first would mean a second copy of every record in the file,
+        // and a clearing file is millions of them.
+        int bodyLength = message.length - headerLength;
 
         Iso8583Message.Builder builder = Iso8583Message.builder();
         builder.put(Iso8583Message.MTI_KEY, readMti(message, options.charset()));
@@ -103,18 +107,18 @@ public final class Iso8583 {
                                                     message,
                                                     null));
             try {
-                pointer += readField(de, field, body, pointer, options, builder);
+                pointer += readField(de, field, message, headerLength, pointer, options, builder);
             } catch (Iso8583Exception problem) {
                 throw withBytes(problem, message);
             }
         }
 
-        if (pointer != body.length) {
+        if (pointer != bodyLength) {
             throw new Iso8583Exception(
                     "Message data is the wrong length. The bitmap accounts for "
                             + pointer
                             + " bytes, the message holds "
-                            + body.length,
+                            + bodyLength,
                     message,
                     null);
         }
@@ -146,6 +150,7 @@ public final class Iso8583 {
         Bitmap bitmap = Bitmap.emptyWithSecondary();
         // Bit 1 always on: every message this writes carries a full 16 byte bitmap.
         bitmap.set(1);
+
         ByteArrayOutputStream body = new ByteArrayOutputStream();
 
         for (int bit = 2; bit <= MAX_FIELD; bit++) {
@@ -160,13 +165,17 @@ public final class Iso8583 {
                             .orElseThrow(
                                     () -> new Iso8583Exception("No layout configured for DE" + de));
             bitmap.set(de);
-            body.writeBytes(writeField(field, value, options.charset()));
+            writeField(body, field, value, options.charset());
         }
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.writeBytes(checkMti(values.get(Iso8583Message.MTI_KEY)).getBytes(options.charset()));
         out.writeBytes(writeBitmap(bitmap, options));
-        out.writeBytes(body.toByteArray());
+        try {
+            body.writeTo(out);
+        } catch (IOException e) {
+            throw new AssertionError("Writing one byte array into another cannot fail", e);
+        }
         return out.toByteArray();
     }
 
@@ -257,12 +266,16 @@ public final class Iso8583 {
     /**
      * Reads one data element into {@code builder}.
      *
-     * @return how many bytes of {@code body} the element took up
+     * <p>The element is read where it lies in {@code message}: {@code bodyStart} is where the data
+     * elements begin, and {@code pointer} how far into them this one is.
+     *
+     * @return how many bytes of the message body the element took up
      */
     private static int readField(
             int bit,
             FieldConfig field,
-            byte[] body,
+            byte[] message,
+            int bodyStart,
             int pointer,
             Iso8583Options options,
             Iso8583Message.Builder builder) {
@@ -270,35 +283,51 @@ public final class Iso8583 {
         int fieldLength = field.length();
 
         if (lengthSize > 0) {
-            if (pointer + lengthSize > body.length) {
+            if (bodyStart + pointer + lengthSize > message.length) {
                 throw new Iso8583Exception(
-                        "DE" + bit + " length runs past the end of the message", body, null);
+                        "DE" + bit + " length runs past the end of the message", message, null);
             }
-            String lengthText = new String(body, pointer, lengthSize, options.charset());
+            String lengthText =
+                    new String(message, bodyStart + pointer, lengthSize, options.charset());
             try {
                 fieldLength = Integer.parseInt(lengthText.trim());
             } catch (NumberFormatException e) {
                 throw new Iso8583Exception(
-                        "DE" + bit + " has a length that is not a number: " + lengthText, body, e);
+                        "DE" + bit + " has a length that is not a number: " + lengthText,
+                        message,
+                        e);
             }
             if (fieldLength < 0) {
                 throw new Iso8583Exception(
-                        "DE" + bit + " has a negative length: " + fieldLength, body, null);
+                        "DE" + bit + " has a negative length: " + fieldLength, message, null);
             }
         }
 
-        int start = pointer + lengthSize;
+        int start = bodyStart + pointer + lengthSize;
         // Take what is there. A field running off the end is reported by the
         // whole-message length check once every element has been walked.
-        int end = Math.min(start + fieldLength, body.length);
-        byte[] raw =
-                java.util.Arrays.copyOfRange(
-                        body, Math.min(start, body.length), Math.max(start, end));
+        int end = Math.min(start + fieldLength, message.length);
 
         // What a field holds beyond its own value is the layout's business, not
         // the reader's: the layout names a processor and that decides both how
         // the value is read and what is pulled out of it.
         FieldCodec codec = options.codec(field.processor());
+
+        if (codec == FieldCodecs.NO_EXTRAS && start <= message.length) {
+            // Nothing will look at the element's bytes, so it is read straight
+            // out of the record. Most elements are this one, and a copy each
+            // adds up to one per element per record.
+            String text = new String(message, start, end - start, options.charset());
+            builder.put(Iso8583Message.deKey(bit), toValue(bit, text, field));
+            return fieldLength + lengthSize;
+        }
+
+        // A start past the end of the record gives a run of zero bytes, the
+        // length of the overshoot. That is what copyOfRange does, and what the
+        // rest of the read is written against; see ReadPastTheEndTest.
+        byte[] raw =
+                java.util.Arrays.copyOfRange(
+                        message, Math.min(start, message.length), Math.max(start, end));
         String text = new String(raw, options.charset());
 
         builder.put(
@@ -308,9 +337,9 @@ public final class Iso8583 {
         return fieldLength + lengthSize;
     }
 
-    private static byte[] writeField(FieldConfig field, Object value, Charset charset) {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-
+    /** Writes one data element onto the end of the message body. */
+    private static void writeField(
+            ByteArrayOutputStream out, FieldConfig field, Object value, Charset charset) {
         // A value that is still bytes came from a codec that said it reads raw
         // bytes, so it goes back out as it came in.
         if (value instanceof byte[] bytes) {
@@ -320,20 +349,19 @@ public final class Iso8583 {
                 out.writeBytes(lengthPrefix(length, field.lengthSize(), charset));
             }
             out.write(bytes, 0, length);
-            return out.toByteArray();
+            return;
         }
 
         String text = toText(value, field);
         if (field.lengthSize() > 0) {
             out.writeBytes(lengthPrefix(text.length(), field.lengthSize(), charset));
             out.writeBytes(text.getBytes(charset));
-            return out.toByteArray();
+            return;
         }
 
         // Fixed field: cut to length, then pad on the right with spaces.
         String fixed = text.length() > field.length() ? text.substring(0, field.length()) : text;
         out.writeBytes(padRight(fixed, field.length()).getBytes(charset));
-        return out.toByteArray();
     }
 
     private static byte[] lengthPrefix(int length, int lengthSize, Charset charset) {

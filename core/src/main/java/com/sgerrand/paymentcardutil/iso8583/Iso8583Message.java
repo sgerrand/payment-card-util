@@ -40,6 +40,8 @@ public final class Iso8583Message {
     /** Key holding DE 55 in full, as hex. */
     public static final String ICC_DATA_KEY = "ICC_DATA";
 
+    private static final String[] DE_KEYS = deKeys();
+
     private final Map<String, Object> values;
 
     /**
@@ -238,12 +240,26 @@ public final class Iso8583Message {
         return text(ICC_DATA_KEY);
     }
 
-    /** The key holding a data element, such as {@code DE2}. */
+    /**
+     * The key holding a data element, such as {@code DE2}.
+     *
+     * <p>Held rather than built: writing a message asks for all 127 of these whether the message
+     * carries them or not, so building them again for every record was most of the cost of writing
+     * a file.
+     */
     public static String deKey(int de) {
         if (de < 1 || de > 128) {
             throw new IllegalArgumentException("Data element number out of range: " + de);
         }
-        return "DE" + de;
+        return DE_KEYS[de];
+    }
+
+    private static String[] deKeys() {
+        String[] keys = new String[129];
+        for (int de = 1; de < keys.length; de++) {
+            keys[de] = "DE" + de;
+        }
+        return keys;
     }
 
     /** The key holding a private data subelement, such as {@code PDS0158}. */
