@@ -49,6 +49,11 @@ public final class IpmParamReader extends LookAheadIterator<ParamRecord>
      * <p>The two record shapes differ only in these offsets, so the shape is picked once and read
      * from here rather than branched on at each use.
      *
+     * <p>The numbers are the parameter file format's, not a layout's, and cardutil hardcodes the
+     * same ones. Where a table's fields sit comes from {@link
+     * com.sgerrand.paymentcardutil.config.ParamTable} and can be configured; where the record's own
+     * details sit cannot, because it is not a choice anybody makes.
+     *
      * @param timestampEnd where the effective timestamp stops
      * @param activeEnd where the active/inactive code stops
      * @param tableEnd where the table name stops: the full table id in an expanded record, the

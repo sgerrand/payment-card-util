@@ -22,9 +22,12 @@ public record ParamRecord(
         Map<String, String> fields) {
 
     /**
-     * The column names for the row's own details, ahead of the table's fields. Kept here so the CSV
-     * header {@link IpmParamReader#columnNames()} builds and the rows {@link #asMap()} builds
-     * cannot drift apart.
+     * The names of the row's own details, ahead of the table's fields.
+     *
+     * <p>They are cardutil's names, not this port's: cardutil hands a parameter row back as a
+     * dictionary keyed exactly like this, and the vectors compare against it, so they are fixed by
+     * parity rather than chosen. Kept in one place so the header {@link
+     * IpmParamReader#columnNames()} builds and the rows {@link #asMap()} builds cannot drift apart.
      */
     static final List<String> DETAIL_COLUMNS =
             List.of("table_id", "effective_timestamp", "active_inactive_code");
@@ -42,8 +45,11 @@ public record ParamRecord(
     }
 
     /**
-     * The row as a flat map, with the row's own details first. This is what the CSV tool writes
-     * out.
+     * The row as a flat map, with the row's own details first.
+     *
+     * <p>This is the shape cardutil hands a row back in, which is why the keys read the way they
+     * do. {@code mci-ipm-param-to-csv} writes it out unchanged, but the shape is not that tool's:
+     * changing it would put this port out of step with the Python one.
      */
     public Map<String, String> asMap() {
         Map<String, String> all = new LinkedHashMap<>();
