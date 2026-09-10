@@ -27,7 +27,7 @@ anything in.
 <dependency>
   <groupId>com.sgerrand</groupId>
   <artifactId>payment-card-util</artifactId>
-  <version>0.1.1-SNAPSHOT</version>
+  <version>0.1.1</version>
 </dependency>
 ```
 
@@ -138,7 +138,7 @@ along with the `.sha256` file beside it if you want to check the download:
 <!-- x-release-please-start-version -->
 
 ```sh
-java -jar payment-card-util-cli-0.1.1-SNAPSHOT --help
+java -jar payment-card-util-cli-0.1.1 --help
 ```
 
 <!-- x-release-please-end -->
@@ -162,8 +162,8 @@ java -jar cli/target/payment-card-util-cli-*-all.jar --help
 <!-- x-release-please-start-version -->
 
 ```sh
-java -jar payment-card-util-cli-0.1.1-SNAPSHOT mci-ipm-to-csv clearing.ipm
-java -jar payment-card-util-cli-0.1.1-SNAPSHOT mci-ipm-encode clearing.ipm \
+java -jar payment-card-util-cli-0.1.1 mci-ipm-to-csv clearing.ipm
+java -jar payment-card-util-cli-0.1.1 mci-ipm-encode clearing.ipm \
     --in-encoding cp500 --out-encoding latin_1 --out-format VBS
 ```
 
@@ -175,7 +175,7 @@ cardutil uses:
 <!-- x-release-please-start-version -->
 
 ```sh
-java -jar payment-card-util-cli-0.1.1-SNAPSHOT mci-ipm-to-csv clearing.ipm \
+java -jar payment-card-util-cli-0.1.1 mci-ipm-to-csv clearing.ipm \
     --config-file my-layout.json
 ```
 
