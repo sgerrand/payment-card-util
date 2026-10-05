@@ -100,12 +100,25 @@ jobs:
           tar --extract --gzip --file "$archive" actionlint
           ./actionlint -color
 
+  # Correctness in this repository is defined by cardutil, so the check that
+  # the generated files and the command line still match it belongs in the
+  # gate rather than off to one side. Pinned, not newest: see the comment in
+  # cardutil-parity.yml. It runs unconditionally, which costs about a minute
+  # and means the job never reports as skipped.
+  parity:
+    name: cardutil parity
+    permissions:
+      contents: read
+    uses: ./.github/workflows/cardutil-parity.yml
+    with:
+      cardutil-version: pinned
+
   required:
     name: Required
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [build, workflows]
+    needs: [build, workflows, parity]
     permissions: {}
     steps:
       - name: Fail if any required job did not succeed
