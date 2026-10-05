@@ -8,10 +8,24 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request makes the run in flight pointless, so stop it
+# and save the ten jobs.
+#
+# Pushes to main get a group of their own, keyed on the run, so they never
+# queue behind each other. Sharing a group would not have been enough:
+# cancel-in-progress protects the run that is executing, but a group holds
+# only one run waiting behind it, so a third push evicts the second, and that
+# commit would be reported as cancelled without ever being built.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  # Belt and braces: with a group per run, pushes have nothing to cancel.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     name: Java ${{ matrix.java }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
       # Run every combination even after one fails, so a single broken pairing
@@ -37,6 +51,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, so the token has no reason to stay behind in
+          # .git/config where the build it is about to run could read it.
+          persist-credentials: false
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -44,14 +62,27 @@ jobs:
           cache: maven
       # The build targets Java 21 whichever version compiles it, so what this
       # matrix checks is that the result still runs on later ones.
-      - run: mvn --batch-mode verify
+      - run: mvn --batch-mode --no-transfer-progress verify
+
+      # A parity failure is the signal this repository exists to catch, and the
+      # log alone does not say which bytes differed. Keep the reports.
+      - name: Keep the test reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: surefire-${{ matrix.os }}-java-${{ matrix.java }}
+          path: '**/target/surefire-reports/'
+          if-no-files-found: ignore
 
   workflows:
     name: Lint the workflows
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Pinned to a version and a checksum rather than an action, so what runs
       # here is the release that was checked, not whatever the tag points at.
@@ -72,6 +103,7 @@ jobs:
   required:
     name: Required
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: always()
     needs: [build, workflows]
     permissions: {}
