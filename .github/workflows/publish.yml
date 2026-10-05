@@ -28,6 +28,7 @@ jobs:
   publish:
     name: Publish to Maven Central
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
 
@@ -110,6 +111,7 @@ jobs:
   attach-tools:
     name: Attach the command line tools
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
 
