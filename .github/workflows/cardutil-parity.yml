@@ -1,0 +1,206 @@
+name: cardutil parity
+
+# Regenerates the two generated files, rebuilds, and compares everything
+# against a given release of cardutil. Called twice, for the two questions
+# worth asking separately:
+#
+#   ci.yml          with pinned, on every push and pull request. Deterministic,
+#                   and part of the Required gate: it can only go red because
+#                   of the change under review.
+#   cardutil-drift  with latest, weekly. Tells us a new cardutil release moved
+#                   something, without holding up unrelated work.
+#
+# Keeping them apart matters. If the gate installed the newest release, the day
+# cardutil ships a new version every pull request would go red for a reason
+# that has nothing to do with it.
+
+on:
+  workflow_call:
+    inputs:
+      cardutil-version:
+        description: >
+          Which cardutil to check against: "pinned" for the version the
+          committed vectors record, or "latest" for the newest release.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CONFIG_FILE: core/src/main/java/com/sgerrand/paymentcardutil/config/DefaultConfig.java
+  VECTORS_FILE: core/src/test/resources/vectors/cardutil.json
+
+jobs:
+  check:
+    name: Regenerate and compare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # This job runs cardutil's own generators, so the token has no
+          # business being left behind in .git/config.
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version-file: .tool-versions
+          cache: maven
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+
+      # The vectors record the release they were built from, so the pinned
+      # version has one home and does not need repeating here.
+      - name: Work out which cardutil to install
+        id: wanted
+        env:
+          MODE: ${{ inputs.cardutil-version }}
+        run: |
+          recorded=$(python -c "import json; print(json.load(open('$VECTORS_FILE'))['cardutil_version'])")
+          echo "recorded=$recorded" >> "$GITHUB_OUTPUT"
+
+          case "$MODE" in
+            pinned) echo "spec=cardutil[crypto]==$recorded" >> "$GITHUB_OUTPUT" ;;
+            latest) echo "spec=cardutil[crypto]" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::cardutil-version must be \"pinned\" or \"latest\", got \"$MODE\"."
+              exit 1
+              ;;
+          esac
+
+      - name: Install cardutil
+        env:
+          SPEC: ${{ steps.wanted.outputs.spec }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade "$SPEC"
+
+      - name: Record which version we got
+        id: cardutil
+        env:
+          MODE: ${{ inputs.cardutil-version }}
+          RECORDED: ${{ steps.wanted.outputs.recorded }}
+        run: |
+          version=$(python -c 'import cardutil; print(cardutil.__version__)')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          if [ "$MODE" = pinned ]; then
+            {
+              echo "## cardutil version"
+              echo ""
+              echo "Checked against \`$version\`, the release the committed"
+              echo "vectors were built from."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## cardutil versions"
+              echo ""
+              echo "| | Version |"
+              echo "| --- | --- |"
+              echo "| Installed now | \`$version\` |"
+              echo "| Committed vectors built from | \`$RECORDED\` |"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Regenerate the config and the vectors
+        run: |
+          python tools/gen_config.py "$CONFIG_FILE"
+          python tools/gen_vectors.py "$VECTORS_FILE"
+
+      - name: Run the tests against whatever was just generated
+        id: tests
+        run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Check the command line against cardutil's
+        if: always()
+        run: |
+          # The test step above builds the jar, but it never gets that far if
+          # the tests fail, and this check is worth having either way.
+          ls cli/target/payment-card-util-cli-*-all.jar > /dev/null 2>&1 \
+            || mvn --batch-mode --quiet package -DskipTests
+
+          {
+            echo ""
+            echo "## Command line options"
+            echo ""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          python tools/check_cli_options.py 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Fail if the generated files moved
+        if: always()
+        env:
+          MODE: ${{ inputs.cardutil-version }}
+          VERSION: ${{ steps.cardutil.outputs.version }}
+          RECORDED: ${{ steps.wanted.outputs.recorded }}
+        run: |
+          if git diff --quiet -- "$CONFIG_FILE" "$VECTORS_FILE"; then
+            echo "No diff: cardutil $VERSION generates the committed files."
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The committed files still match." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ "$MODE" = pinned ]; then
+            echo "::error::The committed files are not what cardutil $VERSION generates."
+            {
+              echo ""
+              echo "## Generated files do not match"
+              echo ""
+              echo "\`$CONFIG_FILE\` and \`$VECTORS_FILE\` are written by"
+              echo "\`tools/gen_config.py\` and \`tools/gen_vectors.py\`, and running those"
+              echo "against cardutil \`$VERSION\` does not reproduce what is committed."
+              echo ""
+              echo "Either one of them was edited by hand, or a generator changed. Run"
+              echo "both as the README describes and commit the result."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::cardutil $VERSION no longer generates the committed files."
+            {
+              echo ""
+              echo "## Drift found"
+              echo ""
+              echo "The committed files were built from cardutil \`$RECORDED\`, and no"
+              echo "longer match what \`$VERSION\` produces."
+              echo ""
+              echo "The test step above says whether this port still agrees with the new"
+              echo "release: if it passed, the change is cosmetic and the files can be"
+              echo "regenerated and committed. If it failed, cardutil has changed behaviour"
+              echo "and the port needs updating to match."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          {
+            echo ""
+            echo "<details><summary>What changed</summary>"
+            echo ""
+            echo '```diff'
+            git diff --stat -- "$CONFIG_FILE" "$VECTORS_FILE"
+            echo ""
+            git diff -- "$CONFIG_FILE" "$VECTORS_FILE" | head -300
+            echo '```'
+            echo ""
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          git --no-pager diff --stat -- "$CONFIG_FILE" "$VECTORS_FILE"
+          git --no-pager diff -- "$CONFIG_FILE" "$VECTORS_FILE" | head -300
+          exit 1
+
+      - name: Keep the regenerated files for inspection
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: regenerated-from-cardutil-${{ steps.cardutil.outputs.version }}
+          path: |
+            ${{ env.CONFIG_FILE }}
+            ${{ env.VECTORS_FILE }}
+          if-no-files-found: error

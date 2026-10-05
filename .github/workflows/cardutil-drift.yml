@@ -1,149 +1,27 @@
 name: cardutil drift
 
+# Asks one question weekly: has a new cardutil release moved anything?
+#
+# Deliberately not part of the Required gate. A new release landing is not a
+# fault in the change under review, and blocking every pull request until the
+# port catches up would punish work that has nothing to do with it. The same
+# checks run against the pinned version on every pull request, from ci.yml.
+#
+# Note that GitHub stops running scheduled workflows after 60 days without
+# activity in the repository.
+
 on:
   schedule:
     - cron: '0 6 * * 1'
   workflow_dispatch:
-  # Listed twice on purpose: GitHub Actions does not expand YAML anchors.
-  push:
-    paths:
-      - 'tools/**'
-      - 'cli/src/main/java/**'
-      - 'core/src/main/java/com/sgerrand/paymentcardutil/config/DefaultConfig.java'
-      - 'core/src/test/resources/vectors/cardutil.json'
-      - '.github/workflows/cardutil-drift.yml'
-  pull_request:
-    paths:
-      - 'tools/**'
-      - 'cli/src/main/java/**'
-      - 'core/src/main/java/com/sgerrand/paymentcardutil/config/DefaultConfig.java'
-      - 'core/src/test/resources/vectors/cardutil.json'
-      - '.github/workflows/cardutil-drift.yml'
 
-permissions:
-  contents: read
-
-env:
-  CONFIG_FILE: core/src/main/java/com/sgerrand/paymentcardutil/config/DefaultConfig.java
-  VECTORS_FILE: core/src/test/resources/vectors/cardutil.json
+permissions: {}
 
 jobs:
   check:
-    name: Check against latest release
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # This job installs whatever cardutil released last and runs its
-          # generators, so the token has no business being left on disk.
-          persist-credentials: false
-
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version-file: .tool-versions
-          cache: maven
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.x'
-
-      - name: Install the newest cardutil
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade 'cardutil[crypto]'
-
-      - name: Record which version we got
-        id: cardutil
-        run: |
-          version=$(python -c 'import cardutil; print(cardutil.__version__)')
-          recorded=$(python -c "import json; print(json.load(open('$VECTORS_FILE'))['cardutil_version'])")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "recorded=$recorded" >> "$GITHUB_OUTPUT"
-          {
-            echo "## cardutil versions"
-            echo ""
-            echo "| | Version |"
-            echo "| --- | --- |"
-            echo "| Installed now | \`$version\` |"
-            echo "| Committed vectors built from | \`$recorded\` |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Regenerate the config and the vectors
-        run: |
-          python tools/gen_config.py "$CONFIG_FILE"
-          python tools/gen_vectors.py "$VECTORS_FILE"
-
-      - name: Run the tests against whatever was just generated
-        id: tests
-        run: mvn --batch-mode --no-transfer-progress verify
-
-      - name: Check the command line against cardutil's
-        if: always()
-        run: |
-          # The test step above builds the jar, but it never gets that far if
-          # the tests fail, and this check is worth having either way.
-          ls cli/target/payment-card-util-cli-*-all.jar > /dev/null 2>&1 \
-            || mvn --batch-mode --quiet package -DskipTests
-
-          {
-            echo ""
-            echo "## Command line options"
-            echo ""
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          python tools/check_cli_options.py 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
-          status=${PIPESTATUS[0]}
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          exit "$status"
-
-      - name: Fail if the generated files moved
-        if: always()
-        run: |
-          if git diff --quiet -- "$CONFIG_FILE" "$VECTORS_FILE"; then
-            echo "No drift: cardutil ${{ steps.cardutil.outputs.version }} generates the committed files."
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "No drift. The committed files still match." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          echo "::error::cardutil ${{ steps.cardutil.outputs.version }} no longer generates the committed files."
-          {
-            echo ""
-            echo "## Drift found"
-            echo ""
-            echo "The committed files were built from cardutil"
-            echo "\`${{ steps.cardutil.outputs.recorded }}\`, and no longer match what"
-            echo "\`${{ steps.cardutil.outputs.version }}\` produces."
-            echo ""
-            echo "The test step above says whether this port still agrees with the new"
-            echo "release: if it passed, the change is cosmetic and the files can be"
-            echo "regenerated and committed. If it failed, cardutil has changed behaviour"
-            echo "and the port needs updating to match."
-            echo ""
-            echo "<details><summary>What changed</summary>"
-            echo ""
-            echo '```diff'
-            git diff --stat -- "$CONFIG_FILE" "$VECTORS_FILE"
-            echo ""
-            git diff -- "$CONFIG_FILE" "$VECTORS_FILE" | head -300
-            echo '```'
-            echo ""
-            echo "</details>"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          git --no-pager diff --stat -- "$CONFIG_FILE" "$VECTORS_FILE"
-          git --no-pager diff -- "$CONFIG_FILE" "$VECTORS_FILE" | head -300
-          exit 1
-
-      - name: Keep the regenerated files for inspection
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: regenerated-from-cardutil-${{ steps.cardutil.outputs.version }}
-          path: |
-            ${{ env.CONFIG_FILE }}
-            ${{ env.VECTORS_FILE }}
-          if-no-files-found: error
+    name: Check against the newest release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/cardutil-parity.yml
+    with:
+      cardutil-version: latest
