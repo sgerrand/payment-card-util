@@ -23,6 +23,22 @@ on:
           committed vectors record, or "latest" for the newest release.
         required: true
         type: string
+    outputs:
+      cardutil-version:
+        description: 'The cardutil release that was actually installed.'
+        value: ${{ jobs.check.outputs.cardutil-version }}
+      recorded-version:
+        description: 'The release the committed vectors say they were built from.'
+        value: ${{ jobs.check.outputs.recorded-version }}
+      tests:
+        description: 'Outcome of the test run: success, failure or skipped.'
+        value: ${{ jobs.check.outputs.tests }}
+      cli-options:
+        description: 'Outcome of the command line comparison.'
+        value: ${{ jobs.check.outputs.cli-options }}
+      generated-files:
+        description: 'Outcome of the generated file comparison.'
+        value: ${{ jobs.check.outputs.generated-files }}
 
 permissions:
   contents: read
@@ -36,6 +52,15 @@ jobs:
     name: Regenerate and compare
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
+    # Which check failed decides what a human has to do about it, so report
+    # each one separately rather than only whether the job as a whole passed.
+    outputs:
+      cardutil-version: ${{ steps.cardutil.outputs.version }}
+      recorded-version: ${{ steps.wanted.outputs.recorded }}
+      tests: ${{ steps.tests.outcome }}
+      cli-options: ${{ steps.cli-options.outcome }}
+      generated-files: ${{ steps.generated.outcome }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,6 +142,7 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress verify
 
       - name: Check the command line against cardutil's
+        id: cli-options
         if: always()
         run: |
           # The test step above builds the jar, but it never gets that far if
@@ -136,6 +162,7 @@ jobs:
           exit "$status"
 
       - name: Fail if the generated files moved
+        id: generated
         if: always()
         env:
           MODE: ${{ inputs.cardutil-version }}

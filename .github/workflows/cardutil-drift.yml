@@ -7,6 +7,10 @@ name: cardutil drift
 # port catches up would punish work that has nothing to do with it. The same
 # checks run against the pinned version on every pull request, from ci.yml.
 #
+# Nobody watches a weekly run, so a failure opens an issue. Without that the
+# only trace is a red mark in the Actions tab, and a new cardutil release could
+# sit unnoticed for months.
+#
 # Note that GitHub stops running scheduled workflows after 60 days without
 # activity in the repository.
 
@@ -25,3 +29,96 @@ jobs:
     uses: ./.github/workflows/cardutil-parity.yml
     with:
       cardutil-version: latest
+
+  # Only for the scheduled run. A failure on a manual run already has someone
+  # looking at it, and does not need an issue filing itself.
+  report:
+    name: Open an issue about the failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [check]
+    if: always() && needs.check.result == 'failure' && github.event_name == 'schedule'
+    permissions:
+      issues: write
+
+    steps:
+      - name: Open or find the issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          LABEL: cardutil-drift
+          VERSION: ${{ needs.check.outputs.cardutil-version }}
+          RECORDED: ${{ needs.check.outputs.recorded-version }}
+          TESTS: ${{ needs.check.outputs.tests }}
+          CLI_OPTIONS: ${{ needs.check.outputs.cli-options }}
+          GENERATED: ${{ needs.check.outputs.generated-files }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # Empty if the job fell over before it got as far as installing.
+          version="${VERSION:-unknown}"
+          title="cardutil $version: the weekly check failed"
+
+          # The label is what makes these findable, and it does not exist until
+          # the first failure.
+          gh label create "$LABEL" \
+            --description 'The weekly check against the newest cardutil release failed' \
+            --color BFD4F2 2>/dev/null || true
+
+          # One issue per cardutil version, so an unaddressed drift does not
+          # file a fresh report every Monday, while a later release still gets
+          # its own.
+          existing=$(gh issue list --label "$LABEL" --state open --json number,title \
+            | jq --arg t "$title" --raw-output \
+              'map(select(.title == $t)) | first | .number // empty')
+
+          if [ -n "$existing" ]; then
+            echo "Already tracked in #$existing."
+            {
+              echo "## Already reported"
+              echo ""
+              echo "This failure is tracked in #$existing."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # What a human has to do next depends on which check failed, so say
+          # so rather than making them open the run to find out.
+          if [ "$TESTS" = failure ]; then
+            verdict='The tests failed, so cardutil has changed behaviour and this port needs updating to match. Do not simply regenerate and commit.'
+          elif [ "$GENERATED" = failure ]; then
+            verdict='The tests passed, so the change looks cosmetic. Regenerating both files and committing the result is probably all this needs.'
+          elif [ "$CLI_OPTIONS" = failure ]; then
+            verdict='The generated files still match and the tests passed, so this is about the command line: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.'
+          else
+            verdict='None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.'
+          fi
+
+          body=$(mktemp)
+          {
+            echo "The weekly check against the newest cardutil release failed."
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Newest release | \`$version\` |"
+            echo "| Committed vectors built from | \`${RECORDED:-unknown}\` |"
+            echo "| Tests | $TESTS |"
+            echo "| Generated files | $GENERATED |"
+            echo "| Command line options | $CLI_OPTIONS |"
+            echo ""
+            echo "$verdict"
+            echo ""
+            echo "[The run]($RUN_URL) has the diff and the regenerated files attached."
+            echo ""
+            echo "Pull requests are unaffected: they are checked against \`${RECORDED:-the pinned version}\`, not against the newest release."
+          } > "$body"
+
+          number=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body" \
+            | tee /dev/stderr | grep --only-matching '[0-9]*$')
+
+          {
+            echo "## Reported"
+            echo ""
+            echo "Opened #$number."
+          } >> "$GITHUB_STEP_SUMMARY"
