@@ -9,10 +9,16 @@ permissions:
   contents: read
 
 # A new push to a pull request makes the run in flight pointless, so stop it
-# and save the ten jobs. Runs on main are left alone: each commit's result is
-# worth having on its own.
+# and save the ten jobs.
+#
+# Pushes to main get a group of their own, keyed on the run, so they never
+# queue behind each other. Sharing a group would not have been enough:
+# cancel-in-progress protects the run that is executing, but a group holds
+# only one run waiting behind it, so a third push evicts the second, and that
+# commit would be reported as cancelled without ever being built.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  # Belt and braces: with a group per run, pushes have nothing to cancel.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
