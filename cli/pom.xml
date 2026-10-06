@@ -52,6 +52,15 @@
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>com.sgerrand.paymentcardutil.cli.Cardutil</mainClass>
+                  <!-- The version flag reads Implementation-Version off the
+                       manifest, and nothing was putting it there, so every
+                       released jar called itself "(from source)". Set here rather
+                       than left to the jar plugin, so it does not depend on which
+                       manifest the shade plugin happened to start from. -->
+                  <manifestEntries>
+                    <Implementation-Title>${project.artifactId}</Implementation-Title>
+                    <Implementation-Version>${project.version}</Implementation-Version>
+                  </manifestEntries>
                 </transformer>
               </transformers>
               <filters>
