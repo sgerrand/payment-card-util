@@ -61,10 +61,11 @@ jobs:
           title="cardutil $version: the weekly check failed"
 
           # The label is what makes these findable, and it does not exist until
-          # the first failure.
+          # the first failure. --force updates one that is already there rather
+          # than failing, so any error left is a real one and stops the job.
           gh label create "$LABEL" \
             --description 'The weekly check against the newest cardutil release failed' \
-            --color BFD4F2 2>/dev/null || true
+            --color BFD4F2 --force
 
           # One issue per cardutil version, so an unaddressed drift does not
           # file a fresh report every Monday, while a later release still gets
