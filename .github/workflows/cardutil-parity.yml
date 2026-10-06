@@ -162,8 +162,15 @@ jobs:
             echo ""
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          # The script's own status is wanted, not a step that stops at the
+          # pipe. As it happens these steps run under `bash -e` with no
+          # pipefail, so it would not stop. That is not leaned on: naming a
+          # shell for the step would bring pipefail with it, and every real
+          # difference would then be reported as a check that did not finish.
+          set +e
           python tools/check_cli_options.py 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           status=${PIPESTATUS[0]}
+          set -e
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
           # This step fails for more than one reason: the jar would not build,
