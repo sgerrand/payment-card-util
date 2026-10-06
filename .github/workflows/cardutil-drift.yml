@@ -95,6 +95,10 @@ jobs:
           # would invite someone to commit half a regeneration. And one failure
           # does not rule out another, so the generated files and the command
           # line get a paragraph each.
+          #
+          # The same goes for blaming cardutil. If the newest release is the
+          # one the committed files were built from, nothing new has shipped,
+          # and this run did exactly what the check on every pull request does.
           ran_all=true
           for outcome in "$TESTS" "$GENERATED" "$CLI_OPTIONS"; do
             case "$outcome" in
@@ -102,6 +106,14 @@ jobs:
               *) ran_all=false ;;
             esac
           done
+
+          if [ -z "${VERSION:-}" ] || [ -z "${RECORDED:-}" ]; then
+            release=unknown
+          elif [ "$VERSION" = "$RECORDED" ]; then
+            release=same
+          else
+            release=new
+          fi
 
           # The command line step fails if the jar will not build or the script
           # falls over, as well as when the options differ. Only the last of
@@ -115,9 +127,16 @@ jobs:
             fi
           fi
 
+          # Pull requests are checked against the recorded release, so a new
+          # one cannot reach them. That is only worth saying when a new release
+          # is what failed here.
+          pull_requests_safe=false
+
           verdict=()
           if [ "$ran_all" = false ]; then
             verdict+=('Not every check ran to the end, so the results above do not say what went wrong. A check that did not run has not passed: do not regenerate and commit on the strength of this. The run log says where the job fell over.')
+          elif [ "$release" = same ]; then
+            verdict+=("The newest release is still \`$RECORDED\`, the one the committed files were built from, so no new release caused this. Pull requests run the same checks against the same release, so they will fail the same way unless this was a one-off. The run log says what went wrong.")
           else
             case "$TESTS/$GENERATED" in
               success/failure)
@@ -127,7 +146,7 @@ jobs:
                 verdict+=('The generated files moved and the tests failed against the new ones, so cardutil has changed behaviour and this port needs updating to match. Do not simply regenerate and commit.')
                 ;;
               failure/success)
-                verdict+=('The tests failed although the generated files still match, so the new release is not the cause: the tests fail against what is already committed. The run log says which.')
+                verdict+=('The tests failed although the generated files still match, so the new release is not the cause: the tests fail against what is already committed, and pull requests run the same tests. The run log says which.')
                 ;;
             esac
 
@@ -139,6 +158,14 @@ jobs:
                 verdict+=('The command line check failed before it had compared anything, so it says nothing about the options either way. Either the jar would not build or the script fell over. The run log says which.')
                 ;;
             esac
+
+            # Tests that fail against files that still match fail for pull
+            # requests too, whatever else the new release moved.
+            if [ "$release" = new ] && [ "$TESTS/$GENERATED" != failure/success ]; then
+              if [ "$GENERATED" = failure ] || [ "$cli" = differs ]; then
+                pull_requests_safe=true
+              fi
+            fi
 
             if [ "${#verdict[@]}" -eq 0 ]; then
               verdict+=('None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.')
@@ -172,8 +199,10 @@ jobs:
               echo ""
             done
             echo "$run_has"
-            echo ""
-            echo "Pull requests are unaffected: they are checked against \`${RECORDED:-the pinned version}\`, not against the newest release."
+            if [ "$pull_requests_safe" = true ]; then
+              echo ""
+              echo "Pull requests are unaffected: they are checked against \`$RECORDED\`, not against the newest release."
+            fi
           } > "$body"
 
           number=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body" \
