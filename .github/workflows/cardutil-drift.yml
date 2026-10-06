@@ -96,6 +96,9 @@ jobs:
           # What a human has to do next depends on which check failed, so say
           # so rather than making them open the run to find out.
           #
+          # The README says the same thing as a table, under "Proving it
+          # against cardutil". Change the two together.
+          #
           # Each paragraph claims only what the outcomes prove. A step that was
           # skipped or cancelled is not a pass, so nothing is read into any of
           # them unless all three ran. If a generator falls over half way, the

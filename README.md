@@ -276,14 +276,27 @@ tracking a new cardutil release.
 
 Because those files are committed, they only speak for the cardutil release they
 came from. The `cardutil drift` workflow runs weekly, installs the newest
-cardutil, regenerates both files and fails if either moved. Read the result like
-this:
+cardutil, regenerates both files, runs the tests against them and fails if
+either file moved. When the weekly run does not succeed it opens an issue,
+assigned to the repository owner, that says which case below applies. A later
+run that still fails rewrites that issue rather than opening another.
+
+Read the result like this:
 
 | Drift | Tests | What it means |
 | --- | --- | --- |
 | no | pass | Nothing to do. |
 | yes | pass | cardutil changed something cosmetic. Regenerate and commit. |
 | yes | fail | cardutil changed behaviour. The port needs updating to match. |
+| no | fail | Not the new release. The tests fail against what is committed. |
+
+The table only holds when every check ran. A check that was skipped or cancelled
+has not passed, and a generator that stopped half way leaves files that moved
+and tests that never ran. Read the log before regenerating anything.
+
+It also only holds for a new release. If the newest cardutil is still the one
+the committed files came from, nothing has shipped, and whatever failed will
+fail on pull requests too.
 
 The failing run keeps the regenerated files as an artifact, so the new output can
 be read without installing anything.
@@ -297,6 +310,10 @@ README does not list as a divergence. Run it the same way:
 mvn package
 python tools/check_cli_options.py
 ```
+
+It exits 1 when the options differ: add the option, or list it above as a
+divergence and in `EXPECTED_EXTRA` in that script. It exits 2 when it could not
+finish comparing, which says nothing about the options either way.
 
 ## Build
 

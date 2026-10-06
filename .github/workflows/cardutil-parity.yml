@@ -182,6 +182,7 @@ jobs:
           MODE: ${{ inputs.cardutil-version }}
           VERSION: ${{ steps.cardutil.outputs.version }}
           RECORDED: ${{ steps.wanted.outputs.recorded }}
+          README_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md#proving-it-against-cardutil
         run: |
           if git diff --quiet -- "$CONFIG_FILE" "$VECTORS_FILE"; then
             echo "No diff: cardutil $VERSION generates the committed files."
@@ -212,10 +213,12 @@ jobs:
               echo "The committed files were built from cardutil \`$RECORDED\`, and no"
               echo "longer match what \`$VERSION\` produces."
               echo ""
-              echo "The test step above says whether this port still agrees with the new"
-              echo "release: if it passed, the change is cosmetic and the files can be"
-              echo "regenerated and committed. If it failed, cardutil has changed behaviour"
-              echo "and the port needs updating to match."
+              # What that means is not restated here. It depends on how the
+              # tests and the command line check ended as well, and the README
+              # is where that is written down.
+              echo "What to do about it depends on how the tests and the command line"
+              echo "check ended as well. [The README]($README_URL) says how to read"
+              echo "them together."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
