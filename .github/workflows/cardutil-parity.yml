@@ -23,6 +23,27 @@ on:
           committed vectors record, or "latest" for the newest release.
         required: true
         type: string
+    outputs:
+      cardutil-version:
+        description: 'The cardutil release that was actually installed.'
+        value: ${{ jobs.check.outputs.cardutil-version }}
+      recorded-version:
+        description: 'The release the committed vectors say they were built from.'
+        value: ${{ jobs.check.outputs.recorded-version }}
+      tests:
+        description: 'Outcome of the test run: success, failure or skipped.'
+        value: ${{ jobs.check.outputs.tests }}
+      cli-options:
+        description: 'Outcome of the command line comparison.'
+        value: ${{ jobs.check.outputs.cli-options }}
+      cli-options-compared:
+        description: >
+          "true" if the command line comparison ran to an answer. A failure
+          without it means the step fell over before it could compare anything.
+        value: ${{ jobs.check.outputs.cli-options-compared }}
+      generated-files:
+        description: 'Outcome of the generated file comparison.'
+        value: ${{ jobs.check.outputs.generated-files }}
 
 permissions:
   contents: read
@@ -36,6 +57,16 @@ jobs:
     name: Regenerate and compare
     runs-on: ubuntu-latest
     timeout-minutes: 45
+
+    # Which check failed decides what a human has to do about it, so report
+    # each one separately rather than only whether the job as a whole passed.
+    outputs:
+      cardutil-version: ${{ steps.cardutil.outputs.version }}
+      recorded-version: ${{ steps.wanted.outputs.recorded }}
+      tests: ${{ steps.tests.outcome }}
+      cli-options: ${{ steps.cli-options.outcome }}
+      cli-options-compared: ${{ steps.cli-options.outputs.compared }}
+      generated-files: ${{ steps.generated.outcome }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,6 +148,7 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress verify
 
       - name: Check the command line against cardutil's
+        id: cli-options
         if: always()
         run: |
           # The test step above builds the jar, but it never gets that far if
@@ -130,17 +162,34 @@ jobs:
             echo ""
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          # The script's own status is wanted, not a step that stops at the
+          # pipe. As it happens these steps run under `bash -e` with no
+          # pipefail, so it would not stop. That is not leaned on: naming a
+          # shell for the step would bring pipefail with it, and every real
+          # difference would then be reported as a check that did not finish.
+          set +e
           python tools/check_cli_options.py 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           status=${PIPESTATUS[0]}
+          set -e
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          # This step fails for more than one reason: the jar would not build,
+          # the script fell over, or the options really do differ. Only the
+          # script's 0 and 1 are an answer about the options, so record that
+          # it gave one.
+          case "$status" in
+            0 | 1) echo "compared=true" >> "$GITHUB_OUTPUT" ;;
+          esac
           exit "$status"
 
       - name: Fail if the generated files moved
+        id: generated
         if: always()
         env:
           MODE: ${{ inputs.cardutil-version }}
           VERSION: ${{ steps.cardutil.outputs.version }}
           RECORDED: ${{ steps.wanted.outputs.recorded }}
+          README_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md#proving-it-against-cardutil
         run: |
           if git diff --quiet -- "$CONFIG_FILE" "$VECTORS_FILE"; then
             echo "No diff: cardutil $VERSION generates the committed files."
@@ -171,10 +220,12 @@ jobs:
               echo "The committed files were built from cardutil \`$RECORDED\`, and no"
               echo "longer match what \`$VERSION\` produces."
               echo ""
-              echo "The test step above says whether this port still agrees with the new"
-              echo "release: if it passed, the change is cosmetic and the files can be"
-              echo "regenerated and committed. If it failed, cardutil has changed behaviour"
-              echo "and the port needs updating to match."
+              # What that means is not restated here. It depends on how the
+              # tests and the command line check ended as well, and the README
+              # is where that is written down.
+              echo "What to do about it depends on how the tests and the command line"
+              echo "check ended as well. [The README]($README_URL) says how to read"
+              echo "them together."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 

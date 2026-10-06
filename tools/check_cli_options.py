@@ -13,12 +13,22 @@ It reads cardutil's own argument parsers rather than its documentation, and
 reads ours out of `--help`, so both sides are what the tools actually accept.
 Only long option names are compared: argparse and picocli disagree about short
 forms in ways nobody types.
+
+The exit status says which of three things happened, because they call for
+different work: 0 when the options match, 1 when they differ, and 2 when the
+comparison could not be finished, so nothing is known either way.
 """
 import glob
 import importlib
 import re
 import subprocess
 import sys
+import traceback
+
+# Exit statuses. Python's own for an uncaught error is 1, which would make a
+# crash look like a difference, so the bottom of this file turns one into 2.
+DIFFERENT = 1
+UNFINISHED = 2
 
 # Our command name, and the cardutil module it is a port of.
 COMMANDS = {
@@ -66,7 +76,8 @@ def our_options(jar, command):
 def main():
     jars = glob.glob('cli/target/payment-card-util-cli-*-all.jar')
     if not jars:
-        sys.exit('No CLI jar. Run mvn package first.')
+        print('No CLI jar. Run mvn package first.', file=sys.stderr)
+        sys.exit(UNFINISHED)
     jar = jars[0]
 
     problems = []
@@ -99,10 +110,16 @@ def main():
         print()
         for problem in problems:
             print(f'::error::{problem}')
-        sys.exit(1)
+        sys.exit(DIFFERENT)
 
     print('\nEvery tool takes what cardutil takes, plus what the README says.')
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:  # noqa: BLE001 - anything at all means no answer
+        # cardutil moving its parsers, or our jar refusing to start, is not an
+        # option that differs. Say so through the exit status.
+        traceback.print_exc()
+        sys.exit(UNFINISHED)
