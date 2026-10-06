@@ -85,14 +85,55 @@ jobs:
 
           # What a human has to do next depends on which check failed, so say
           # so rather than making them open the run to find out.
-          if [ "$TESTS" = failure ]; then
-            verdict='The tests failed, so cardutil has changed behaviour and this port needs updating to match. Do not simply regenerate and commit.'
-          elif [ "$GENERATED" = failure ]; then
-            verdict='The tests passed, so the change looks cosmetic. Regenerating both files and committing the result is probably all this needs.'
-          elif [ "$CLI_OPTIONS" = failure ]; then
-            verdict='The generated files still match and the tests passed, so this is about the command line: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.'
+          #
+          # Each paragraph claims only what the outcomes prove. A step that was
+          # skipped or cancelled is not a pass, so nothing is read into any of
+          # them unless all three ran. If a generator falls over half way, the
+          # files have moved and the tests never ran, and calling that cosmetic
+          # would invite someone to commit half a regeneration. And one failure
+          # does not rule out another, so the generated files and the command
+          # line get a paragraph each.
+          ran_all=true
+          for outcome in "$TESTS" "$GENERATED" "$CLI_OPTIONS"; do
+            case "$outcome" in
+              success | failure) ;;
+              *) ran_all=false ;;
+            esac
+          done
+
+          verdict=()
+          if [ "$ran_all" = false ]; then
+            verdict+=('Not every check ran to the end, so the results above do not say what went wrong. A check that did not run has not passed: do not regenerate and commit on the strength of this. The run log says where the job fell over.')
           else
-            verdict='None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.'
+            case "$TESTS/$GENERATED" in
+              success/failure)
+                verdict+=('The generated files moved and the tests passed against the new ones, so that change looks cosmetic. Regenerating both files and committing the result is probably all it needs.')
+                ;;
+              failure/failure)
+                verdict+=('The generated files moved and the tests failed against the new ones, so cardutil has changed behaviour and this port needs updating to match. Do not simply regenerate and commit.')
+                ;;
+              failure/success)
+                verdict+=('The tests failed although the generated files still match, so the new release is not the cause: the tests fail against what is already committed. The run log says which.')
+                ;;
+            esac
+
+            if [ "$CLI_OPTIONS" = failure ]; then
+              verdict+=('The command line differs: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.')
+            fi
+
+            if [ "${#verdict[@]}" -eq 0 ]; then
+              verdict+=('None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.')
+            fi
+          fi
+
+          # The diff only exists if the files moved, and the attached files
+          # are only a full regeneration if every step ran.
+          if [ "$GENERATED" != failure ]; then
+            run_has="[The run]($RUN_URL) has the log."
+          elif [ "$ran_all" = true ]; then
+            run_has="[The run]($RUN_URL) has the diff, and the regenerated files attached."
+          else
+            run_has="[The run]($RUN_URL) has the log. The files attached to it may be only partly regenerated, so do not commit them."
           fi
 
           body=$(mktemp)
@@ -103,13 +144,15 @@ jobs:
             echo "| --- | --- |"
             echo "| Newest release | \`$version\` |"
             echo "| Committed vectors built from | \`${RECORDED:-unknown}\` |"
-            echo "| Tests | $TESTS |"
-            echo "| Generated files | $GENERATED |"
-            echo "| Command line options | $CLI_OPTIONS |"
+            echo "| Tests | ${TESTS:-unknown} |"
+            echo "| Generated files | ${GENERATED:-unknown} |"
+            echo "| Command line options | ${CLI_OPTIONS:-unknown} |"
             echo ""
-            echo "$verdict"
-            echo ""
-            echo "[The run]($RUN_URL) has the diff and the regenerated files attached."
+            for paragraph in "${verdict[@]}"; do
+              echo "$paragraph"
+              echo ""
+            done
+            echo "$run_has"
             echo ""
             echo "Pull requests are unaffected: they are checked against \`${RECORDED:-the pinned version}\`, not against the newest release."
           } > "$body"
