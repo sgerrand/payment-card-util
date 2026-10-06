@@ -86,7 +86,12 @@ jobs:
           # have not expired. A comment is what notifies anyone, so one is only
           # added when the outcome is not the one the issue last described. The
           # description ends with a hidden line recording that outcome.
-          found=$(gh issue list --label "$LABEL" --state open --json number,title,body \
+          #
+          # gh lists 30 issues unless told otherwise. One the list left out
+          # would be opened a second time, so ask for far more than there
+          # could be.
+          found=$(gh issue list --label "$LABEL" --state open --limit 1000 \
+              --json number,title,body \
             | jq --arg t "$title" 'map(select(.title == $t)) | first // empty')
           existing=$(jq --raw-output '.number // empty' <<< "$found")
           described=$(jq --raw-output '.body // empty' <<< "$found" \
