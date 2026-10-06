@@ -99,6 +99,34 @@ jobs:
           tar --extract --gzip --file "$archive" actionlint
           ./actionlint -color
 
+  # Shading is its own build step with its own failure modes, and none of them
+  # show up in mvn verify: that tests the classes on the classpath, not the jar
+  # people download. One Linux run is enough, the jar being the same everywhere.
+  cli-jar:
+    name: Smoke test the shaded jar
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version-file: .tool-versions
+          cache: maven
+
+      # The matrix above already ran the tests. This job wants only the jar.
+      - name: Build the jar
+        run: mvn --batch-mode --no-transfer-progress package -DskipTests
+
+      - name: Run it
+        run: |
+          version=$(mvn --batch-mode -q help:evaluate -Dexpression=project.version -DforceStdout)
+          tools/smoke_cli.sh "cli/target/payment-card-util-cli-$version-all.jar" "$version"
+
   # Correctness in this repository is defined by cardutil, so the check that
   # the generated files and the command line still match it belongs in the
   # gate rather than off to one side. Pinned, not newest: see the comment in
@@ -117,7 +145,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: always()
-    needs: [build, workflows, parity]
+    needs: [build, workflows, parity, cli-jar]
     permissions: {}
     steps:
       - name: Fail if any required job did not succeed

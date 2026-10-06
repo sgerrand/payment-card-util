@@ -131,6 +131,17 @@ jobs:
       - name: Build the tools
         run: mvn --batch-mode --no-transfer-progress package
 
+      # Before it goes anywhere. Maven Central is permanent and a release asset
+      # is what people download, so a jar that does not run should not get that
+      # far. Passing the version makes this also check the jar is the one the
+      # tag claims.
+      - name: Check the jar runs
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG##*-v}"
+          tools/smoke_cli.sh "cli/target/payment-card-util-cli-$version-all.jar" "$version"
+
       - name: Attach the jar to the release
         run: |
           tag='${{ github.event.release.tag_name }}'
