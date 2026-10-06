@@ -53,6 +53,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           LABEL: cardutil-drift
+          ASSIGNEE: ${{ github.repository_owner }}
           RESULT: ${{ needs.check.result }}
           VERSION: ${{ needs.check.outputs.cardutil-version }}
           RECORDED: ${{ needs.check.outputs.recorded-version }}
@@ -226,10 +227,21 @@ jobs:
             number=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body" \
               | tee /dev/stderr | grep --only-matching '[0-9]*$')
 
+            # A label notifies nobody, and an issue a workflow opens reaches
+            # only people watching every issue in the repository. Assigning it
+            # is what puts it in front of someone. That is done after creating
+            # rather than as part of it, so an owner who cannot be assigned,
+            # such as an organisation, costs the assignment and not the issue.
+            assigned=" and assigned it to @$ASSIGNEE"
+            if ! gh issue edit "$number" --add-assignee "$ASSIGNEE" > /dev/null; then
+              echo "::warning::Opened #$number but could not assign it to $ASSIGNEE."
+              assigned=", but could not assign it to @$ASSIGNEE"
+            fi
+
             {
               echo "## Reported"
               echo ""
-              echo "Opened #$number."
+              echo "Opened #$number$assigned."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
