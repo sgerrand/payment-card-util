@@ -32,12 +32,18 @@ jobs:
 
   # Only for the scheduled run. A failure on a manual run already has someone
   # looking at it, and does not need an issue filing itself.
+  #
+  # Anything short of success counts, not only a failure. A check that runs
+  # into its time limit is cancelled rather than failed, and a build that hangs
+  # on a new release is as much worth an issue as one that goes red. The price
+  # is that stopping a scheduled run by hand files an issue too, which is rare
+  # and easy to close.
   report:
     name: Open an issue about the failure
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [check]
-    if: always() && needs.check.result == 'failure' && github.event_name == 'schedule'
+    if: always() && needs.check.result != 'success' && github.event_name == 'schedule'
     permissions:
       issues: write
 
@@ -47,6 +53,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           LABEL: cardutil-drift
+          RESULT: ${{ needs.check.result }}
           VERSION: ${{ needs.check.outputs.cardutil-version }}
           RECORDED: ${{ needs.check.outputs.recorded-version }}
           TESTS: ${{ needs.check.outputs.tests }}
@@ -133,6 +140,12 @@ jobs:
           pull_requests_safe=false
 
           verdict=()
+          ended=failed
+          if [ "$RESULT" = cancelled ]; then
+            ended='was cancelled before it finished'
+            verdict+=('Unless someone stopped the run by hand, the check ran into its time limit, which usually means something hung. The run log shows the last step it reached.')
+          fi
+
           if [ "$ran_all" = false ]; then
             verdict+=('Not every check ran to the end, so the results above do not say what went wrong. A check that did not run has not passed: do not regenerate and commit on the strength of this. The run log says where the job fell over.')
           elif [ "$release" = same ]; then
@@ -184,7 +197,7 @@ jobs:
 
           body=$(mktemp)
           {
-            echo "The weekly check against the newest cardutil release failed."
+            echo "The weekly check against the newest cardutil release $ended."
             echo ""
             echo "| | |"
             echo "| --- | --- |"
