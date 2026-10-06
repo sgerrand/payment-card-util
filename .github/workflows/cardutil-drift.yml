@@ -51,6 +51,7 @@ jobs:
           RECORDED: ${{ needs.check.outputs.recorded-version }}
           TESTS: ${{ needs.check.outputs.tests }}
           CLI_OPTIONS: ${{ needs.check.outputs.cli-options }}
+          CLI_COMPARED: ${{ needs.check.outputs.cli-options-compared }}
           GENERATED: ${{ needs.check.outputs.generated-files }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -102,6 +103,18 @@ jobs:
             esac
           done
 
+          # The command line step fails if the jar will not build or the script
+          # falls over, as well as when the options differ. Only the last of
+          # those is a finding about the options.
+          cli=fine
+          if [ "$CLI_OPTIONS" = failure ]; then
+            if [ "${CLI_COMPARED:-}" = true ]; then
+              cli=differs
+            else
+              cli=unfinished
+            fi
+          fi
+
           verdict=()
           if [ "$ran_all" = false ]; then
             verdict+=('Not every check ran to the end, so the results above do not say what went wrong. A check that did not run has not passed: do not regenerate and commit on the strength of this. The run log says where the job fell over.')
@@ -118,9 +131,14 @@ jobs:
                 ;;
             esac
 
-            if [ "$CLI_OPTIONS" = failure ]; then
-              verdict+=('The command line differs: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.')
-            fi
+            case "$cli" in
+              differs)
+                verdict+=('The command line differs: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.')
+                ;;
+              unfinished)
+                verdict+=('The command line check failed before it had compared anything, so it says nothing about the options either way. Either the jar would not build or the script fell over. The run log says which.')
+                ;;
+            esac
 
             if [ "${#verdict[@]}" -eq 0 ]; then
               verdict+=('None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.')

@@ -36,6 +36,11 @@ on:
       cli-options:
         description: 'Outcome of the command line comparison.'
         value: ${{ jobs.check.outputs.cli-options }}
+      cli-options-compared:
+        description: >
+          "true" if the command line comparison ran to an answer. A failure
+          without it means the step fell over before it could compare anything.
+        value: ${{ jobs.check.outputs.cli-options-compared }}
       generated-files:
         description: 'Outcome of the generated file comparison.'
         value: ${{ jobs.check.outputs.generated-files }}
@@ -60,6 +65,7 @@ jobs:
       recorded-version: ${{ steps.wanted.outputs.recorded }}
       tests: ${{ steps.tests.outcome }}
       cli-options: ${{ steps.cli-options.outcome }}
+      cli-options-compared: ${{ steps.cli-options.outputs.compared }}
       generated-files: ${{ steps.generated.outcome }}
 
     steps:
@@ -159,6 +165,14 @@ jobs:
           python tools/check_cli_options.py 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           status=${PIPESTATUS[0]}
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          # This step fails for more than one reason: the jar would not build,
+          # the script fell over, or the options really do differ. Only the
+          # script's 0 and 1 are an answer about the options, so record that
+          # it gave one.
+          case "$status" in
+            0 | 1) echo "compared=true" >> "$GITHUB_OUTPUT" ;;
+          esac
           exit "$status"
 
       - name: Fail if the generated files moved
