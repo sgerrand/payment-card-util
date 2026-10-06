@@ -78,19 +78,19 @@ jobs:
           # One issue per cardutil version, so an unaddressed drift does not
           # file a fresh report every Monday, while a later release still gets
           # its own.
-          existing=$(gh issue list --label "$LABEL" --state open --json number,title \
-            | jq --arg t "$title" --raw-output \
-              'map(select(.title == $t)) | first | .number // empty')
-
-          if [ -n "$existing" ]; then
-            echo "Already tracked in #$existing."
-            {
-              echo "## Already reported"
-              echo ""
-              echo "This failure is tracked in #$existing."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
+          #
+          # That one issue is kept true rather than left as the first run wrote
+          # it. Each later run rewrites the description, so the advice matches
+          # what is failing now, and the link is to a run whose log and files
+          # have not expired. A comment is what notifies anyone, so one is only
+          # added when the outcome is not the one the issue last described. The
+          # description ends with a hidden line recording that outcome.
+          found=$(gh issue list --label "$LABEL" --state open --json number,title,body \
+            | jq --arg t "$title" 'map(select(.title == $t)) | first // empty')
+          existing=$(jq --raw-output '.number // empty' <<< "$found")
+          described=$(jq --raw-output '.body // empty' <<< "$found" \
+            | tr -d '\r' | sed -n 's/^<!-- outcomes: \(.*\) -->$/\1/p' | tail -n 1)
+          outcomes="$RESULT/$TESTS/$GENERATED/$CLI_OPTIONS/${CLI_COMPARED:-}/${RECORDED:-}"
 
           # What a human has to do next depends on which check failed, so say
           # so rather than making them open the run to find out.
@@ -216,13 +216,49 @@ jobs:
               echo ""
               echo "Pull requests are unaffected: they are checked against \`$RECORDED\`, not against the newest release."
             fi
+            echo ""
+            echo "This describes the run of $(date -u +%F). Each weekly run that still fails rewrites it, so put notes in a comment."
+            echo ""
+            echo "<!-- outcomes: $outcomes -->"
           } > "$body"
 
-          number=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body" \
-            | tee /dev/stderr | grep --only-matching '[0-9]*$')
+          if [ -z "$existing" ]; then
+            number=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body" \
+              | tee /dev/stderr | grep --only-matching '[0-9]*$')
+
+            {
+              echo "## Reported"
+              echo ""
+              echo "Opened #$number."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          gh issue edit "$existing" --body-file "$body"
+
+          if [ "$described" = "$outcomes" ]; then
+            {
+              echo "## Already reported"
+              echo ""
+              echo "Still failing the same way. #$existing now describes this run."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          comment=$(mktemp)
+          {
+            echo "The weekly check ended differently from the run this issue last described, so the description above has been rewritten."
+            echo ""
+            for paragraph in "${verdict[@]}"; do
+              echo "$paragraph"
+              echo ""
+            done
+            echo "$run_has"
+          } > "$comment"
+          gh issue comment "$existing" --body-file "$comment"
 
           {
-            echo "## Reported"
+            echo "## Reported a change"
             echo ""
-            echo "Opened #$number."
+            echo "The outcome is not the one #$existing described, so it was rewritten and commented on."
           } >> "$GITHUB_STEP_SUMMARY"
