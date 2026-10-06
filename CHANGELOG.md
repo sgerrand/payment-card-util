@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.2](https://github.com/sgerrand/payment-card-util/compare/payment-card-util-v0.1.1...payment-card-util-v0.1.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **cli:** stamp the version into the shaded jar, and check it runs ([#25](https://github.com/sgerrand/payment-card-util/issues/25)) ([639a6c1](https://github.com/sgerrand/payment-card-util/commit/639a6c19e517b37de5b38c7760fbd4a6611804ee))
+
+
+### Documentation
+
+* **ci:** drop the cost reasons from the matrix comments ([#26](https://github.com/sgerrand/payment-card-util/issues/26)) ([f7d73b1](https://github.com/sgerrand/payment-card-util/commit/f7d73b10faf4e1d6c67d49c4030722b3d1d8e924))
+
 ## [0.1.1](https://github.com/sgerrand/payment-card-util/compare/payment-card-util-v0.1.0...payment-card-util-v0.1.1) (2026-09-10)
 
 
