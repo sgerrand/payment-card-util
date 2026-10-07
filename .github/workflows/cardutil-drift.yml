@@ -105,12 +105,14 @@ jobs:
           # against cardutil". Change the two together.
           #
           # Each paragraph claims only what the outcomes prove. A step that was
-          # skipped or cancelled is not a pass, so nothing is read into any of
-          # them unless all three ran. If a generator falls over half way, the
-          # files have moved and the tests never ran, and calling that cosmetic
-          # would invite someone to commit half a regeneration. And one failure
-          # does not rule out another, so the generated files and the command
-          # line get a paragraph each.
+          # skipped or cancelled is not a pass, so nothing is read into the
+          # tests or the generated files unless all three ran. If a generator
+          # falls over half way, the files have moved and the tests never ran,
+          # and calling that cosmetic would invite someone to commit half a
+          # regeneration. And one failure does not rule out another, so the
+          # generated files and the command line get a paragraph each. The
+          # command line check answers its own question, so what it found is
+          # said even when the others did not finish.
           #
           # The same goes for blaming cardutil. If the newest release is the
           # one the committed files were built from, nothing new has shipped,
@@ -156,7 +158,7 @@ jobs:
           fi
 
           if [ "$ran_all" = false ]; then
-            verdict+=('Not every check ran to the end, so the results above do not say what went wrong. A check that did not run has not passed: do not regenerate and commit on the strength of this. The run log says where the job fell over.')
+            verdict+=('Not every check ran to the end, so nothing is read into the tests or the generated files. A check that did not run has not passed: do not regenerate and commit on the strength of this. The run log says where the job fell over.')
           elif [ "$release" = same ]; then
             verdict+=("The newest release is still \`$RECORDED\`, the one the committed files were built from, so no new release caused this. Pull requests run the same checks against the same release, so they will fail the same way unless this was a one-off. The run log says what went wrong.")
           else
