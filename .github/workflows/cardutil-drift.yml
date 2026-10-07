@@ -65,6 +65,21 @@ jobs:
         run: |
           set -euo pipefail
 
+          # A label notifies nobody, and an issue a workflow opens reaches only
+          # people watching every issue in the repository. Assigning it is what
+          # puts it in front of someone, so an assignment that fails must not
+          # be the end of it. The description carries this line until one has
+          # worked, and each failing run that finds the line tries again. Once
+          # it has worked the line goes, so unassigning yourself sticks.
+          OWED_LINE='<!-- assignee: owed -->'
+          assign() {
+            if gh issue edit "$1" --add-assignee "$ASSIGNEE" > /dev/null; then
+              return 0
+            fi
+            echo "::warning::Could not assign #$1 to $ASSIGNEE. The next failing run tries again."
+            return 1
+          }
+
           # Empty if the job fell over before it got as far as installing.
           version="${VERSION:-unknown}"
           title="cardutil $version: the weekly check failed"
@@ -85,7 +100,8 @@ jobs:
           # what is failing now, and the link is to a run whose log and files
           # have not expired. A comment is what notifies anyone, so one is only
           # added when the outcome is not the one the issue last described. The
-          # description ends with a hidden line recording that outcome.
+          # description ends with a hidden line recording that outcome, and a
+          # second one for as long as the issue is still owed an assignee.
           #
           # gh lists 30 issues unless told otherwise. One the list left out
           # would be opened a second time, so ask for far more than there
@@ -97,6 +113,8 @@ jobs:
           described=$(jq --raw-output '.body // empty' <<< "$found" \
             | tr -d '\r' | sed -n 's/^<!-- outcomes: \(.*\) -->$/\1/p' | tail -n 1)
           outcomes="$RESULT/$TESTS/$GENERATED/$CLI_OPTIONS/${CLI_COMPARED:-}/${RECORDED:-}"
+          owed=$(jq --raw-output '.body // empty' <<< "$found" \
+            | tr -d '\r' | grep --count --line-regexp --fixed-strings -- "$OWED_LINE" || true)
 
           # What a human has to do next depends on which check failed, so say
           # so rather than making them open the run to find out.
@@ -245,19 +263,30 @@ jobs:
             echo "<!-- outcomes: $outcomes -->"
           } > "$body"
 
+          # The same description, still owed an assignee.
+          body_owed=$(mktemp)
+          {
+            cat "$body"
+            echo "$OWED_LINE"
+          } > "$body_owed"
+
           if [ -z "$existing" ]; then
-            number=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body" \
+            # The issue starts out owed an assignee and stops being once the
+            # assignment has worked. The other way round, an assignment that
+            # failed would leave an issue that looks dealt with and that no
+            # later run would touch. Assigning is done after creating rather
+            # than as part of it, so an owner who cannot be assigned, such as
+            # an organisation, costs the assignment and not the issue.
+            number=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body_owed" \
               | tee /dev/stderr | grep --only-matching '[0-9]*$')
 
-            # A label notifies nobody, and an issue a workflow opens reaches
-            # only people watching every issue in the repository. Assigning it
-            # is what puts it in front of someone. That is done after creating
-            # rather than as part of it, so an owner who cannot be assigned,
-            # such as an organisation, costs the assignment and not the issue.
-            assigned=" and assigned it to @$ASSIGNEE"
-            if ! gh issue edit "$number" --add-assignee "$ASSIGNEE" > /dev/null; then
-              echo "::warning::Opened #$number but could not assign it to $ASSIGNEE."
-              assigned=", but could not assign it to @$ASSIGNEE"
+            assigned=", but could not assign it to @$ASSIGNEE. The next failing run tries again"
+            if assign "$number"; then
+              assigned=" and assigned it to @$ASSIGNEE"
+              # If this fails the line stays, and the next run assigns again,
+              # which changes nothing unless the assignee has stepped away.
+              gh issue edit "$number" --body-file "$body" > /dev/null \
+                || echo "::warning::Assigned #$number but could not record that in its description."
             fi
 
             {
@@ -266,6 +295,12 @@ jobs:
               echo "Opened #$number$assigned."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
+          fi
+
+          # An issue still owed an assignee gets one before anything else, so
+          # that a comment below has someone to reach.
+          if [ "$owed" -gt 0 ] && ! assign "$existing"; then
+            body="$body_owed"
           fi
 
           if [ "$described" = "$outcomes" ]; then
