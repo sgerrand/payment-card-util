@@ -172,15 +172,6 @@ jobs:
                 ;;
             esac
 
-            case "$cli" in
-              differs)
-                verdict+=('The command line differs: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.')
-                ;;
-              unfinished)
-                verdict+=('The command line check failed before it had compared anything, so it says nothing about the options either way. Either the jar would not build or the script fell over. The run log says which.')
-                ;;
-            esac
-
             # Tests that fail against files that still match fail for pull
             # requests too, whatever else the new release moved.
             if [ "$release" = new ] && [ "$TESTS/$GENERATED" != failure/success ]; then
@@ -188,16 +179,34 @@ jobs:
                 pull_requests_safe=true
               fi
             fi
+          fi
 
-            if [ "${#verdict[@]}" -eq 0 ]; then
-              verdict+=('None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.')
-            fi
+          # The command line check stands on its own. Its outcome says what it
+          # says whatever the generated files did and whether a new release is
+          # involved, so it is reported outside the cases above. Inside them a
+          # differing option went unsaid in every week cardutil shipped nothing,
+          # which is most weeks.
+          case "$cli" in
+            differs)
+              verdict+=('The command line differs: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.')
+              ;;
+            unfinished)
+              verdict+=('The command line check failed before it had compared anything, so it says nothing about the options either way. Either the jar would not build or the script fell over. The run log says which.')
+              ;;
+          esac
+
+          if [ "${#verdict[@]}" -eq 0 ]; then
+            verdict+=('None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.')
           fi
 
           # The diff only exists if the files moved, and the attached files
-          # are only a full regeneration if every step ran.
+          # are only a full regeneration if every step ran. A cancelled job gets
+          # a few seconds to upload and may not manage it, so nothing is
+          # promised there.
           if [ "$GENERATED" != failure ]; then
             run_has="[The run]($RUN_URL) has the log."
+          elif [ "$RESULT" = cancelled ]; then
+            run_has="[The run]($RUN_URL) has the diff. The regenerated files are attached only if the job lasted long enough to upload them, and they may be only partly regenerated, so do not commit them."
           elif [ "$ran_all" = true ]; then
             run_has="[The run]($RUN_URL) has the diff, and the regenerated files attached."
           else
@@ -254,9 +263,8 @@ jobs:
             exit 0
           fi
 
-          gh issue edit "$existing" --body-file "$body"
-
           if [ "$described" = "$outcomes" ]; then
+            gh issue edit "$existing" --body-file "$body"
             {
               echo "## Already reported"
               echo ""
@@ -265,9 +273,16 @@ jobs:
             exit 0
           fi
 
+          # The comment goes on before the description is rewritten. The
+          # description carries the outcomes line, and that line is what stops a
+          # later run commenting again. Rewritten first, a comment that then
+          # failed to post would leave the issue claiming this outcome had been
+          # reported, and every run that ended the same way would pass in
+          # silence. This way the cost of a failure here is a description one run
+          # out of date, which the next run puts right.
           comment=$(mktemp)
           {
-            echo "The weekly check ended differently from the run this issue last described, so the description above has been rewritten."
+            echo "The weekly check ended differently from the run this issue last described. The description above is rewritten to match this run."
             echo ""
             for paragraph in "${verdict[@]}"; do
               echo "$paragraph"
@@ -276,6 +291,8 @@ jobs:
             echo "$run_has"
           } > "$comment"
           gh issue comment "$existing" --body-file "$comment"
+
+          gh issue edit "$existing" --body-file "$body"
 
           {
             echo "## Reported a change"
