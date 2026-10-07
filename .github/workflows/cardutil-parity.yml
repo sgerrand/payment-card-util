@@ -246,8 +246,13 @@ jobs:
           git --no-pager diff -- "$CONFIG_FILE" "$VECTORS_FILE" | head -300
           exit 1
 
+      # Only when the files moved, because that is the only time the upload
+      # holds anything the repository does not already have. always() rather
+      # than failure(), so a job that hit its time limit still attaches what it
+      # managed to generate: failure() is false once a job is cancelled, and a
+      # hung run is exactly when a half finished regeneration is worth seeing.
       - name: Keep the regenerated files for inspection
-        if: failure()
+        if: always() && steps.generated.outcome == 'failure'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: regenerated-from-cardutil-${{ steps.cardutil.outputs.version }}
