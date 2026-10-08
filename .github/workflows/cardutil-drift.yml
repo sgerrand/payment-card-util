@@ -216,8 +216,8 @@ jobs:
             verdict+=('None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.')
           fi
 
-          # The diff only exists if the files moved. Two things are then kept
-          # apart.
+          # The diff exists whenever the files moved, and only then. Two more
+          # things are kept apart after that.
           #
           # Whether the files are a full regeneration depends on the generators
           # alone, not on the checks that follow them. The test step is the
@@ -236,14 +236,17 @@ jobs:
 
           if [ "$GENERATED" != failure ]; then
             run_has="[The run]($RUN_URL) has the log."
-          elif [ "$regenerated" = true ] && [ "$RESULT" != cancelled ]; then
-            run_has="[The run]($RUN_URL) has the diff, and the regenerated files attached."
-          elif [ "$regenerated" = true ]; then
-            run_has="[The run]($RUN_URL) has the diff. The regenerated files are attached only if the job lasted long enough to upload them."
-          elif [ "$RESULT" = cancelled ]; then
-            run_has="[The run]($RUN_URL) has the diff. The regenerated files are attached only if the job lasted long enough to upload them, and they may be only partly regenerated, so do not commit them."
           else
-            run_has="[The run]($RUN_URL) has the log. The files attached to it may be only partly regenerated, so do not commit them."
+            run_has="[The run]($RUN_URL) has the diff"
+            if [ "$regenerated" = true ] && [ "$RESULT" != cancelled ]; then
+              run_has+=", and the regenerated files attached."
+            elif [ "$regenerated" = true ]; then
+              run_has+=". The regenerated files are attached only if the job lasted long enough to upload them."
+            elif [ "$RESULT" = cancelled ]; then
+              run_has+=". The regenerated files are attached only if the job lasted long enough to upload them, and they may be only partly regenerated, so do not commit them."
+            else
+              run_has+=". The files attached to it may be only partly regenerated, so do not commit them."
+            fi
           fi
 
           body=$(mktemp)
