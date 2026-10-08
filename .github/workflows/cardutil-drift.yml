@@ -217,15 +217,28 @@ jobs:
           fi
 
           # The diff only exists if the files moved. Two things are then kept
-          # apart. Whether the files are a full regeneration depends on every
-          # check having run, however the job ended. Whether they got uploaded
-          # depends on how it ended: a cancelled job gets a few seconds to
-          # upload and may not manage it, so nothing is promised there.
+          # apart.
+          #
+          # Whether the files are a full regeneration depends on the generators
+          # alone, not on the checks that follow them. The test step is the
+          # next one in the parity workflow and has no condition of its own, so
+          # it starts only once both generators have finished. If it started,
+          # however it ended, the files are whole. If it was skipped, or its
+          # outcome did not reach this job, they may not be.
+          #
+          # Whether they got uploaded depends on how the job ended. A cancelled
+          # job may be stopped before the upload is done, so nothing is
+          # promised there.
+          case "$TESTS" in
+            success | failure | cancelled) regenerated=true ;;
+            *) regenerated=false ;;
+          esac
+
           if [ "$GENERATED" != failure ]; then
             run_has="[The run]($RUN_URL) has the log."
-          elif [ "$ran_all" = true ] && [ "$RESULT" != cancelled ]; then
+          elif [ "$regenerated" = true ] && [ "$RESULT" != cancelled ]; then
             run_has="[The run]($RUN_URL) has the diff, and the regenerated files attached."
-          elif [ "$ran_all" = true ]; then
+          elif [ "$regenerated" = true ]; then
             run_has="[The run]($RUN_URL) has the diff. The regenerated files are attached only if the job lasted long enough to upload them."
           elif [ "$RESULT" = cancelled ]; then
             run_has="[The run]($RUN_URL) has the diff. The regenerated files are attached only if the job lasted long enough to upload them, and they may be only partly regenerated, so do not commit them."
