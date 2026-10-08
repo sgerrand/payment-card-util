@@ -298,8 +298,9 @@ It also only holds for a new release. If the newest cardutil is still the one
 the committed files came from, nothing has shipped, and whatever failed will
 fail on pull requests too.
 
-The failing run keeps the regenerated files as an artifact, so the new output can
-be read without installing anything.
+When the files move, the run keeps them as an artifact, so the new output can be
+read without installing anything. A run that was cancelled may not have lasted
+long enough to upload them.
 
 The command line is hand written, so regenerating proves nothing about it. The
 same workflow reads cardutil's own argument parsers and this port's `--help`,
