@@ -110,11 +110,10 @@ jobs:
               --json number,title,body \
             | jq --arg t "$title" 'map(select(.title == $t)) | first // empty')
           existing=$(jq --raw-output '.number // empty' <<< "$found")
-          described=$(jq --raw-output '.body // empty' <<< "$found" \
-            | tr -d '\r' | sed -n 's/^<!-- outcomes: \(.*\) -->$/\1/p' | tail -n 1)
+          existing_body=$(jq --raw-output '.body // empty' <<< "$found" | tr -d '\r')
+          described=$(sed -n 's/^<!-- outcomes: \(.*\) -->$/\1/p' <<< "$existing_body" | tail -n 1)
           outcomes="$RESULT/$TESTS/$GENERATED/$CLI_OPTIONS/${CLI_COMPARED:-}/${RECORDED:-}"
-          owed=$(jq --raw-output '.body // empty' <<< "$found" \
-            | tr -d '\r' | grep --count --line-regexp --fixed-strings -- "$OWED_LINE" || true)
+          owed=$(grep --count --line-regexp --fixed-strings -- "$OWED_LINE" <<< "$existing_body" || true)
 
           # What a human has to do next depends on which check failed, so say
           # so rather than making them open the run to find out.
