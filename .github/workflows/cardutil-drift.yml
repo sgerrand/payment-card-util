@@ -202,9 +202,7 @@ jobs:
 
           # The command line check stands on its own. Its outcome says what it
           # says whatever the generated files did and whether a new release is
-          # involved, so it is reported outside the cases above. Inside them a
-          # differing option went unsaid in every week cardutil shipped nothing,
-          # which is most weeks.
+          # involved, so it is reported outside the cases above.
           case "$cli" in
             differs)
               verdict+=('The command line differs: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.')
