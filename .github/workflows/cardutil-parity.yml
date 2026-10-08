@@ -143,6 +143,9 @@ jobs:
           python tools/gen_config.py "$CONFIG_FILE"
           python tools/gen_vectors.py "$VECTORS_FILE"
 
+      # No condition of its own, on purpose: this only starts once both
+      # generators have finished. The drift report reads "the tests started" as
+      # "the files are a full regeneration", so keep it that way.
       - name: Run the tests against whatever was just generated
         id: tests
         run: mvn --batch-mode --no-transfer-progress verify
