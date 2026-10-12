@@ -61,6 +61,7 @@ jobs:
           CLI_OPTIONS: ${{ needs.check.outputs.cli-options }}
           CLI_COMPARED: ${{ needs.check.outputs.cli-options-compared }}
           GENERATED: ${{ needs.check.outputs.generated-files }}
+          UPLOAD: ${{ needs.check.outputs.regenerated-files-upload }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -226,27 +227,42 @@ jobs:
           # however it ended, the files are whole. If it was skipped, or its
           # outcome did not reach this job, they may not be.
           #
-          # Whether they got uploaded depends on how the job ended. A cancelled
-          # job may be stopped before the upload is done, so nothing is
-          # promised there.
+          # Whether they got uploaded is what the upload step says, and nothing
+          # else. That the files moved does not mean the upload worked: it can
+          # fail on its own, and a cancelled job may be stopped before it is
+          # done. So the files are only said to be attached when the step
+          # succeeded. If it failed they are not there. Any other outcome, or
+          # none reaching this job, leaves it open, and the issue says so.
+          #
+          # The upload is not part of the outcomes line. A comment is for a
+          # check that ended differently, not for an upload that did.
           case "$TESTS" in
             success | failure | cancelled) regenerated=true ;;
             *) regenerated=false ;;
           esac
+          partial='may be only partly regenerated, so do not commit them'
 
           if [ "$GENERATED" != failure ]; then
             run_has="[The run]($RUN_URL) has the log."
           else
             run_has="[The run]($RUN_URL) has the diff"
-            if [ "$regenerated" = true ] && [ "$RESULT" != cancelled ]; then
-              run_has+=", and the regenerated files attached."
-            elif [ "$regenerated" = true ]; then
-              run_has+=". The regenerated files are attached only if the job lasted long enough to upload them."
-            elif [ "$RESULT" = cancelled ]; then
-              run_has+=". The regenerated files are attached only if the job lasted long enough to upload them, and they may be only partly regenerated, so do not commit them."
-            else
-              run_has+=". The files attached to it may be only partly regenerated, so do not commit them."
-            fi
+            case "${UPLOAD:-}/$regenerated" in
+              success/true)
+                run_has+=", and the regenerated files attached."
+                ;;
+              success/false)
+                run_has+=". The files attached to it $partial."
+                ;;
+              failure/*)
+                run_has+=". The regenerated files are not attached, because uploading them failed. The run log says why."
+                ;;
+              */true)
+                run_has+=". The regenerated files are attached only if the upload finished, and the run does not say that it did."
+                ;;
+              *)
+                run_has+=". The regenerated files are attached only if the upload finished, and the run does not say that it did. If they are there, they $partial."
+                ;;
+            esac
           fi
 
           body=$(mktemp)

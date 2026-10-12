@@ -300,7 +300,8 @@ fail on pull requests too.
 
 When the files move, the run keeps them as an artifact, so the new output can be
 read without installing anything. A run that was cancelled may not have lasted
-long enough to upload them.
+long enough to upload them, and an upload can fail by itself, so the issue only
+says they are attached when the upload worked.
 
 The command line is hand written, so regenerating proves nothing about it. The
 same workflow reads cardutil's own argument parsers and this port's `--help`,
