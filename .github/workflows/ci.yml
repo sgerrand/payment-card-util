@@ -104,6 +104,12 @@ jobs:
       - name: Run shellcheck over the tools
         run: shellcheck tools/*.sh
 
+      # The drift report only runs for real when the weekly check fails, which
+      # may not happen for months. This runs it against a stand in for gh, so a
+      # mistake shows up here instead of the one time it matters.
+      - name: Test the drift report
+        run: python3 tools/test_report_drift.py
+
   # Shading is its own build step with its own failure modes, and none of them
   # show up in mvn verify: that tests the classes on the classpath, not the jar
   # people download. One Linux run is enough, the jar being the same everywhere.
