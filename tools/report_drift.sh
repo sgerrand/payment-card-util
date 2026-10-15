@@ -15,6 +15,7 @@
 #   VERSION, RECORDED  the newest cardutil, and the one the files came from
 #   TESTS, GENERATED, CLI_OPTIONS
 #                      the outcomes of the three checks
+#   REGENERATION       the outcome of running the generators
 #   CLI_COMPARED       "true" if the command line check reached an answer
 #   UPLOAD             the outcome of attaching the regenerated files
 #   RUN_URL            the run, for links
@@ -179,11 +180,9 @@ fi
 # things are kept apart after that.
 #
 # Whether the files are a full regeneration depends on the generators
-# alone, not on the checks that follow them. The test step is the
-# next one in the parity workflow and has no condition of its own, so
-# it starts only once both generators have finished. If it started,
-# however it ended, the files are whole. If it was skipped, or its
-# outcome did not reach this job, they may not be.
+# alone, not on the checks that follow them. Only a generator step
+# that succeeded made whole files. Any other outcome, or none reaching
+# this job, means they may not be.
 #
 # Whether they got uploaded is what the upload step says, and nothing
 # else. That the files moved does not mean the upload worked: it can
@@ -194,10 +193,10 @@ fi
 #
 # The upload is not part of the outcomes line. A comment is for a
 # check that ended differently, not for an upload that did.
-case "$TESTS" in
-  success | failure | cancelled) regenerated=true ;;
-  *) regenerated=false ;;
-esac
+regenerated=false
+if [ "${REGENERATION:-}" = success ]; then
+  regenerated=true
+fi
 partial='may be only partly regenerated, so do not commit them'
 
 if [ "$GENERATED" != failure ]; then

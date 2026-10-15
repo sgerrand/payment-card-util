@@ -44,6 +44,11 @@ on:
       generated-files:
         description: 'Outcome of the generated file comparison.'
         value: ${{ jobs.check.outputs.generated-files }}
+      regeneration:
+        description: >
+          Outcome of running the two generators. Only "success" means the
+          regenerated files are whole.
+        value: ${{ jobs.check.outputs.regeneration }}
       regenerated-files-upload:
         description: >
           Outcome of attaching the regenerated files to the run. Only
@@ -72,6 +77,7 @@ jobs:
       cli-options: ${{ steps.cli-options.outcome }}
       cli-options-compared: ${{ steps.cli-options.outputs.compared }}
       generated-files: ${{ steps.generated.outcome }}
+      regeneration: ${{ steps.regenerate.outcome }}
       regenerated-files-upload: ${{ steps.upload.outcome }}
 
     steps:
@@ -145,13 +151,11 @@ jobs:
           fi
 
       - name: Regenerate the config and the vectors
+        id: regenerate
         run: |
           python tools/gen_config.py "$CONFIG_FILE"
           python tools/gen_vectors.py "$VECTORS_FILE"
 
-      # No condition of its own, on purpose: this only starts once both
-      # generators have finished. The drift report reads "the tests started" as
-      # "the files are a full regeneration", so keep it that way.
       - name: Run the tests against whatever was just generated
         id: tests
         run: mvn --batch-mode --no-transfer-progress verify
