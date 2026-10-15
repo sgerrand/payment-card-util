@@ -69,6 +69,7 @@ jobs:
           CLI_OPTIONS: ${{ needs.check.outputs.cli-options }}
           CLI_COMPARED: ${{ needs.check.outputs.cli-options-compared }}
           GENERATED: ${{ needs.check.outputs.generated-files }}
+          REGENERATION: ${{ needs.check.outputs.regeneration }}
           UPLOAD: ${{ needs.check.outputs.regenerated-files-upload }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: tools/report_drift.sh
