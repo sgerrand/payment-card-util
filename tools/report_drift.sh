@@ -4,7 +4,9 @@
 #
 # Run by the report job in cardutil-drift.yml, which only runs when a
 # scheduled check did not succeed. That is rare, so this lives in a file of
-# its own, where it can be run outside the workflow.
+# its own where tools/test_report_drift.py can run it on every pull request,
+# against a stand in for gh. Otherwise a mistake here would only show the
+# first time cardutil moved something, which is the one time it matters.
 #
 # Everything comes in through the environment, as the workflow sets it:
 #
