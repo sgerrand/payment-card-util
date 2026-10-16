@@ -167,7 +167,7 @@ def run(outcomes, issues=(), fail='', created=None):
 
 
 def outcomes_line(outcomes):
-    keys = ('RESULT', 'TESTS', 'GENERATED', 'CLI_OPTIONS', 'CLI_COMPARED', 'RECORDED')
+    keys = ('RESULT', 'TESTS', 'GENERATED', 'CLI_OPTIONS', 'CLI_COMPARED', 'RECORDED', 'REGENERATION')
     return '<!-- outcomes: ' + '/'.join(outcomes.get(k) or '' for k in keys) + ' -->'
 
 
@@ -470,6 +470,14 @@ class AnIssueAlreadyOpen(unittest.TestCase):
         result = run({**COSMETIC, 'TESTS': 'failure'}, issues=[issue(COSMETIC)], fail='issue-comment')
         self.assertNotEqual(result.status, 0)
         self.assertNotIn('issue edit', result.kinds)
+
+    def test_files_no_longer_whole_get_a_comment(self):
+        # The tests ended the same way, but committing the files is no
+        # longer safe, and someone may be about to.
+        result = run({**COSMETIC, 'REGENERATION': ''}, issues=[issue(COSMETIC)])
+        self.assertEqual(result.status, 0, result.stderr)
+        self.assertEqual(result.kinds, ['label create', 'issue list', 'issue comment', 'issue edit'])
+        self.assertIn('may be only partly regenerated', result.sent('issue comment')[0])
 
     def test_an_owed_assignment_is_made_before_anything_else(self):
         result = run({**COSMETIC, 'TESTS': 'failure'}, issues=[issue(COSMETIC, owed=True)])
