@@ -74,7 +74,7 @@ found=$(gh issue list --label "$LABEL" --state open --limit 1000 \
 existing=$(jq --raw-output '.number // empty' <<< "$found")
 existing_body=$(jq --raw-output '.body // empty' <<< "$found" | tr -d '\r')
 described=$(sed -n 's/^<!-- outcomes: \(.*\) -->$/\1/p' <<< "$existing_body" | tail -n 1)
-outcomes="$RESULT/$TESTS/$GENERATED/$CLI_OPTIONS/${CLI_COMPARED:-}/${RECORDED:-}"
+outcomes="$RESULT/$TESTS/$GENERATED/$CLI_OPTIONS/${CLI_COMPARED:-}/${RECORDED:-}/${REGENERATION:-}"
 owed=$(grep --count --line-regexp --fixed-strings -- "$OWED_LINE" <<< "$existing_body" || true)
 
 # What a human has to do next depends on which check failed, so say
@@ -194,7 +194,9 @@ fi
 # none reaching this job, leaves it open, and the issue says so.
 #
 # The upload is not part of the outcomes line. A comment is for a
-# check that ended differently, not for an upload that did.
+# check that ended differently, not for an upload that did. The
+# generators are part of it, because whether the files are whole
+# decides whether they are safe to commit.
 regenerated=false
 if [ "${REGENERATION:-}" = success ]; then
   regenerated=true
