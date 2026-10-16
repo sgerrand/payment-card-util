@@ -265,8 +265,17 @@ if [ -z "$existing" ]; then
   # later run would touch. Assigning is done after creating rather
   # than as part of it, so an owner who cannot be assigned, such as
   # an organisation, costs the assignment and not the issue.
-  number=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body_owed" \
-    | tee /dev/stderr | grep --only-matching '[0-9]*$')
+  created=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body_owed" \
+    | tee /dev/stderr)
+  # gh prints the new issue's address, ending in its number. Without
+  # the number nothing more can be done to the issue here, so stop
+  # and say so. It is still owed an assignee, and the next failing run
+  # finds it by its title and assigns it.
+  number=$(grep --only-matching --extended-regexp '[0-9]+$' <<< "$created" || true)
+  if [ -z "$number" ]; then
+    echo "::error::Opened an issue but could not read its number from what gh printed, so could not assign it. The next failing run tries again."
+    exit 1
+  fi
 
   assigned=", but could not assign it to @$ASSIGNEE. The next failing run tries again"
   if assign "$number"; then

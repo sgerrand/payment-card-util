@@ -34,7 +34,7 @@ SCRIPT = pathlib.Path(__file__).resolve().parent / 'report_drift.sh'
 
 # Records each call as one line, "<kind> <file>", where the file holds what was
 # sent as --body-file, if anything, and keeps any --title. A kind named in
-# $FAIL fails instead.
+# $FAIL fails instead. Creating an issue prints $CREATED, if it is set.
 FAKE_GH = r'''#!/usr/bin/env bash
 set -euo pipefail
 kind="$1 $2"
@@ -63,7 +63,7 @@ fi
 echo "$kind $kept" >> "$STATE/calls"
 case "$kind" in
   "issue list") cat "$STATE/issues.json" ;;
-  "issue create") echo "https://github.com/example/repo/issues/99" ;;
+  "issue create") echo "${CREATED-https://github.com/example/repo/issues/99}" ;;
 esac
 '''
 
@@ -138,9 +138,10 @@ def tearDownModule():
     FAKE_GH_DIR.cleanup()
 
 
-def run(outcomes, issues=(), fail=''):
+def run(outcomes, issues=(), fail='', created=None):
     """Run the script with these outcomes, these issues already open, and the
-    kinds of gh call named in fail (as "issue-assign" and so on) failing."""
+    kinds of gh call named in fail (as "issue-assign" and so on) failing.
+    created, if given, is what gh prints on opening an issue."""
     with tempfile.TemporaryDirectory(prefix='report-drift-') as tmp:
         state = pathlib.Path(tmp)
         (state / 'calls').write_text('')
@@ -158,6 +159,7 @@ def run(outcomes, issues=(), fail=''):
             'ASSIGNEE': 'owner',
             'RUN_URL': 'https://example.test/run/1',
             'GITHUB_STEP_SUMMARY': str(state / 'summary'),
+            **({'CREATED': created} if created is not None else {}),
             **{k: v for k, v in outcomes.items() if v is not None},
         }
         done = subprocess.run(['bash', str(SCRIPT)], env=env, capture_output=True, text=True)
@@ -419,6 +421,16 @@ class OpeningAnIssue(unittest.TestCase):
         self.assertEqual(result.kinds[-1], 'issue edit FAILED')
         self.assertIn('assigned it to @owner', result.summary)
         self.assertEqual(len(result.warnings), 1)
+
+    def test_an_issue_whose_number_cannot_be_read_stops_the_job(self):
+        # It is opened owed an assignee, so the next failing run assigns it.
+        for created in ('', 'https://github.com/example/repo/issues/', 'Created.'):
+            with self.subTest(created=created):
+                result = run(COSMETIC, created=created)
+                self.assertNotEqual(result.status, 0)
+                self.assertEqual(result.kinds, ['label create', 'issue list', 'issue create'])
+                self.assertIn(OWED, result.description)
+                self.assertIn('could not read its number', result.stdout)
 
     def test_a_label_that_cannot_be_made_stops_the_job(self):
         result = run(COSMETIC, fail='label-create')
