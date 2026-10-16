@@ -307,8 +307,9 @@ class AttachedFiles(unittest.TestCase):
 
 # Every value each outcome can take, and none at all for an output that did
 # not arrive. Some go in pairs rather than on their own: CLI_COMPARED with
-# CLI_OPTIONS, and the tests with the generators, since the tests only run
-# once the generators have succeeded.
+# CLI_OPTIONS, the tests with the generators, since the tests only run once
+# the generators have succeeded, and the newest release with the one the
+# files came from, since what matters is whether they are known and the same.
 GRID = {
     'RESULT': ('failure', 'cancelled'),
     'REGENERATION_TESTS': (
@@ -318,7 +319,7 @@ GRID = {
     'GENERATED': ('success', 'failure', 'cancelled', 'skipped', ''),
     'CLI': (('success', 'true'), ('failure', 'true'), ('failure', ''), ('cancelled', ''), ('', '')),
     'UPLOAD': ('success', 'failure', 'cancelled', 'skipped', ''),
-    'VERSION': ('0.8.0', '0.7.3', ''),
+    'VERSIONS': (('0.8.0', '0.7.3'), ('0.7.3', '0.7.3'), ('', '0.7.3'), ('0.8.0', '')),
 }
 
 
@@ -327,7 +328,7 @@ def every_mix():
         mix = dict(zip(GRID, values))
         mix['CLI_OPTIONS'], mix['CLI_COMPARED'] = mix.pop('CLI')
         mix['REGENERATION'], mix['TESTS'] = mix.pop('REGENERATION_TESTS')
-        mix['RECORDED'] = '0.7.3'
+        mix['VERSION'], mix['RECORDED'] = mix.pop('VERSIONS')
         yield mix
 
 
@@ -380,7 +381,7 @@ class EveryMix(unittest.TestCase):
         for mix, result in self.runs:
             with self.subTest(**mix):
                 if 'Pull requests are unaffected' in result.description:
-                    self.assertEqual(mix['VERSION'], '0.8.0')
+                    self.assertEqual((mix['VERSION'], mix['RECORDED']), ('0.8.0', '0.7.3'))
                     self.assertNotEqual((mix['TESTS'], mix['GENERATED']), ('failure', 'success'))
                     for check in ('TESTS', 'GENERATED', 'CLI_OPTIONS'):
                         self.assertIn(mix[check], ('success', 'failure'))
