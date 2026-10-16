@@ -73,6 +73,12 @@ parsers and this port's `--help` and fails on an option one side has and the
 other does not. Ours alone is allowed where the README lists it as a divergence
 and `EXPECTED_EXTRA` in that script names it.
 
+When the weekly run fails, `tools/report_drift.sh` opens or updates an issue
+saying what to do. It only runs for real on a failure, so
+`python3 tools/test_report_drift.py` runs it on every pull request against a
+stand in for `gh`. Change what the issue says and the README table under
+"Proving it against cardutil" together.
+
 ## Layout
 
 Two Maven modules, and the split is a constraint rather than tidiness:

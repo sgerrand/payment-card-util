@@ -1,0 +1,340 @@
+#!/usr/bin/env bash
+#
+# Opens, or keeps up to date, the issue for a failed weekly cardutil check.
+#
+# Run by the report job in cardutil-drift.yml, which only runs when a
+# scheduled check did not succeed. That is rare, so this lives in a file of
+# its own where tools/test_report_drift.py can run it on every pull request,
+# against a stand in for gh. Otherwise a mistake here would only show the
+# first time cardutil moved something, which is the one time it matters.
+#
+# Everything comes in through the environment, as the workflow sets it:
+#
+#   GH_TOKEN, GH_REPO  for gh
+#   LABEL              the label that marks these issues
+#   ASSIGNEE           who a new issue is assigned to
+#   RESULT             how the check job ended
+#   VERSION, RECORDED  the newest cardutil, and the one the files came from
+#   TESTS, GENERATED, CLI_OPTIONS
+#                      the outcomes of the three checks
+#   REGENERATION       the outcome of running the generators
+#   CLI_COMPARED       "true" if the command line check reached an answer
+#   UPLOAD             the outcome of attaching the regenerated files
+#   RUN_URL            the run, for links
+#
+# Any of the check's outputs may be empty, if the job fell over before it
+# set them.
+
+set -euo pipefail
+
+# A label notifies nobody, and an issue a workflow opens reaches only
+# people watching every issue in the repository. Assigning it is what
+# puts it in front of someone, so an assignment that fails must not
+# be the end of it. The description carries this line until one has
+# worked, and each failing run that finds the line tries again. Once
+# it has worked the line goes, so unassigning yourself sticks.
+OWED_LINE='<!-- assignee: owed -->'
+assign() {
+  if gh issue edit "$1" --add-assignee "$ASSIGNEE" > /dev/null; then
+    return 0
+  fi
+  echo "::warning::Could not assign #$1 to $ASSIGNEE. The next failing run tries again."
+  return 1
+}
+
+# Empty if the job fell over before it got as far as installing.
+version="${VERSION:-unknown}"
+title="cardutil $version: the weekly check failed"
+
+# The label is what makes these findable, and it does not exist until
+# the first failure. --force updates one that is already there rather
+# than failing, so any error left is a real one and stops the job.
+gh label create "$LABEL" \
+  --description 'The weekly check against the newest cardutil release failed' \
+  --color BFD4F2 --force
+
+# One issue per cardutil version, so an unaddressed drift does not
+# file a fresh report every Monday, while a later release still gets
+# its own.
+#
+# That one issue is kept true rather than left as the first run wrote
+# it. Each later run rewrites the description, so the advice matches
+# what is failing now, and the link is to a run whose log and files
+# have not expired. A comment is what notifies anyone, so one is only
+# added when the outcome is not the one the issue last described. The
+# description ends with a hidden line recording that outcome, and a
+# second one for as long as the issue is still owed an assignee.
+#
+# gh lists 30 issues unless told otherwise. One the list left out
+# would be opened a second time, so ask for far more than there
+# could be.
+found=$(gh issue list --label "$LABEL" --state open --limit 1000 \
+    --json number,title,body \
+  | jq --arg t "$title" 'map(select(.title == $t)) | first // empty')
+existing=$(jq --raw-output '.number // empty' <<< "$found")
+existing_body=$(jq --raw-output '.body // empty' <<< "$found" | tr -d '\r')
+described=$(sed -n 's/^<!-- outcomes: \(.*\) -->$/\1/p' <<< "$existing_body" | tail -n 1)
+outcomes="$RESULT/$TESTS/$GENERATED/$CLI_OPTIONS/${CLI_COMPARED:-}/${RECORDED:-}/${REGENERATION:-}"
+owed=$(grep --count --line-regexp --fixed-strings -- "$OWED_LINE" <<< "$existing_body" || true)
+
+# What a human has to do next depends on which check failed, so say
+# so rather than making them open the run to find out.
+#
+# The README says the same thing as a table, under "Proving it
+# against cardutil". Change the two together.
+#
+# Each paragraph claims only what the outcomes prove. A step that was
+# skipped or cancelled is not a pass, so nothing is read into the
+# tests or the generated files unless all three ran. If a generator
+# falls over half way, the files have moved and the tests never ran,
+# and calling that cosmetic would invite someone to commit half a
+# regeneration. And one failure does not rule out another, so the
+# generated files and the command line get a paragraph each. The
+# command line check answers its own question, so what it found is
+# said even when the others did not finish.
+#
+# The same goes for blaming cardutil. If the newest release is the
+# one the committed files were built from, nothing new has shipped,
+# and this run did exactly what the check on every pull request does.
+ran_all=true
+for outcome in "$TESTS" "$GENERATED" "$CLI_OPTIONS"; do
+  case "$outcome" in
+    success | failure) ;;
+    *) ran_all=false ;;
+  esac
+done
+
+if [ -z "${VERSION:-}" ] || [ -z "${RECORDED:-}" ]; then
+  release=unknown
+elif [ "$VERSION" = "$RECORDED" ]; then
+  release=same
+else
+  release=new
+fi
+
+# The command line step fails if the jar will not build or the script
+# falls over, as well as when the options differ. Only the last of
+# those is a finding about the options.
+cli=fine
+if [ "$CLI_OPTIONS" = failure ]; then
+  if [ "${CLI_COMPARED:-}" = true ]; then
+    cli=differs
+  else
+    cli=unfinished
+  fi
+fi
+
+# Pull requests are checked against the recorded release, so a new
+# one cannot reach them. That is only worth saying when a new release
+# is what failed here.
+pull_requests_safe=false
+
+verdict=()
+ended=failed
+if [ "$RESULT" = cancelled ]; then
+  ended='was cancelled before it finished'
+  verdict+=('Unless someone stopped the run by hand, the check ran into its time limit, which usually means something hung. The run log shows the last step it reached.')
+fi
+
+if [ "$ran_all" = false ]; then
+  verdict+=('Not every check ran to the end, so nothing is read into the tests or the generated files. A check that did not run has not passed: do not regenerate and commit on the strength of this. The run log says where the job fell over.')
+elif [ "$release" = same ]; then
+  verdict+=("The newest release is still \`$RECORDED\`, the one the committed files were built from, so no new release caused this. Pull requests run the same checks against the same release, so they will fail the same way unless this was a one-off. The run log says what went wrong.")
+else
+  case "$TESTS/$GENERATED" in
+    success/failure)
+      verdict+=('The generated files moved and the tests passed against the new ones, so that change looks cosmetic. Regenerating both files and committing the result is probably all it needs.')
+      ;;
+    failure/failure)
+      verdict+=('The generated files moved and the tests failed against the new ones, so cardutil has changed behaviour and this port needs updating to match. Do not simply regenerate and commit.')
+      ;;
+    failure/success)
+      verdict+=('The tests failed although the generated files still match, so the new release is not the cause: the tests fail against what is already committed, and pull requests run the same tests. The run log says which.')
+      ;;
+  esac
+
+  # Tests that fail against files that still match fail for pull
+  # requests too, whatever else the new release moved.
+  if [ "$release" = new ] && [ "$TESTS/$GENERATED" != failure/success ]; then
+    if [ "$GENERATED" = failure ] || [ "$cli" = differs ]; then
+      pull_requests_safe=true
+    fi
+  fi
+fi
+
+# The command line check stands on its own. Its outcome says what it
+# says whatever the generated files did and whether a new release is
+# involved, so it is reported outside the cases above.
+case "$cli" in
+  differs)
+    verdict+=('The command line differs: cardutil has an option this port does not, or the other way round. Either add it, or record the divergence in the README and in EXPECTED_EXTRA in tools/check_cli_options.py.')
+    ;;
+  unfinished)
+    verdict+=('The command line check failed before it had compared anything, so it says nothing about the options either way. Either the jar would not build or the script fell over. The run log says which.')
+    ;;
+esac
+
+if [ "${#verdict[@]}" -eq 0 ]; then
+  verdict+=('None of the three checks reported a failure of its own, so the job fell over somewhere else. The run log says where.')
+fi
+
+# The diff exists whenever the files moved, and only then. Two more
+# things are kept apart after that.
+#
+# Whether the files are a full regeneration depends on the generators
+# alone, not on the checks that follow them. Only a generator step
+# that succeeded made whole files. Any other outcome, or none reaching
+# this job, means they may not be.
+#
+# Whether they got uploaded is what the upload step says, and nothing
+# else. That the files moved does not mean the upload worked: it can
+# fail on its own, and a cancelled job may be stopped before it is
+# done. So the files are only said to be attached when the step
+# succeeded. If it failed they are not there. Any other outcome, or
+# none reaching this job, leaves it open, and the issue says so.
+#
+# The upload is not part of the outcomes line. A comment is for a
+# check that ended differently, not for an upload that did. The
+# generators are part of it, because whether the files are whole
+# decides whether they are safe to commit.
+regenerated=false
+if [ "${REGENERATION:-}" = success ]; then
+  regenerated=true
+fi
+partial='may be only partly regenerated, so do not commit them'
+
+if [ "$GENERATED" != failure ]; then
+  run_has="[The run]($RUN_URL) has the log."
+else
+  run_has="[The run]($RUN_URL) has the diff"
+  case "${UPLOAD:-}/$regenerated" in
+    success/true)
+      run_has+=", and the regenerated files attached."
+      ;;
+    success/false)
+      run_has+=". The files attached to it $partial."
+      ;;
+    failure/*)
+      run_has+=". The regenerated files are not attached, because uploading them failed. The run log says why."
+      ;;
+    */true)
+      run_has+=". The regenerated files are attached only if the upload finished, and the run does not say that it did."
+      ;;
+    *)
+      run_has+=". The regenerated files are attached only if the upload finished, and the run does not say that it did. If they are there, they $partial."
+      ;;
+  esac
+fi
+
+body=$(mktemp)
+{
+  echo "The weekly check against the newest cardutil release $ended."
+  echo ""
+  echo "| | |"
+  echo "| --- | --- |"
+  echo "| Newest release | \`$version\` |"
+  echo "| Committed vectors built from | \`${RECORDED:-unknown}\` |"
+  echo "| Tests | ${TESTS:-unknown} |"
+  echo "| Generated files | ${GENERATED:-unknown} |"
+  echo "| Command line options | ${CLI_OPTIONS:-unknown} |"
+  echo ""
+  for paragraph in "${verdict[@]}"; do
+    echo "$paragraph"
+    echo ""
+  done
+  echo "$run_has"
+  if [ "$pull_requests_safe" = true ]; then
+    echo ""
+    echo "Pull requests are unaffected: they are checked against \`$RECORDED\`, not against the newest release."
+  fi
+  echo ""
+  echo "This describes the run of $(date -u +%F). Each weekly run that still fails rewrites it, so put notes in a comment."
+  echo ""
+  echo "<!-- outcomes: $outcomes -->"
+} > "$body"
+
+# The same description, still owed an assignee.
+body_owed=$(mktemp)
+{
+  cat "$body"
+  echo "$OWED_LINE"
+} > "$body_owed"
+
+if [ -z "$existing" ]; then
+  # The issue starts out owed an assignee and stops being once the
+  # assignment has worked. The other way round, an assignment that
+  # failed would leave an issue that looks dealt with and that no
+  # later run would touch. Assigning is done after creating rather
+  # than as part of it, so an owner who cannot be assigned, such as
+  # an organisation, costs the assignment and not the issue.
+  created=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body_owed" \
+    | tee /dev/stderr)
+  # gh prints the new issue's address, ending in its number. Without
+  # the number nothing more can be done to the issue here, so stop
+  # and say so. It is still owed an assignee, and the next failing run
+  # finds it by its title and assigns it.
+  number=$(grep --only-matching --extended-regexp '[0-9]+$' <<< "$created" || true)
+  if [ -z "$number" ]; then
+    echo "::error::Opened an issue but could not read its number from what gh printed, so could not assign it. The next failing run tries again."
+    exit 1
+  fi
+
+  assigned=", but could not assign it to @$ASSIGNEE. The next failing run tries again"
+  if assign "$number"; then
+    assigned=" and assigned it to @$ASSIGNEE"
+    # If this fails the line stays, and the next run assigns again,
+    # which changes nothing unless the assignee has stepped away.
+    gh issue edit "$number" --body-file "$body" > /dev/null \
+      || echo "::warning::Assigned #$number but could not record that in its description."
+  fi
+
+  {
+    echo "## Reported"
+    echo ""
+    echo "Opened #$number$assigned."
+  } >> "$GITHUB_STEP_SUMMARY"
+  exit 0
+fi
+
+# An issue still owed an assignee gets one before anything else, so
+# that a comment below has someone to reach.
+if [ "$owed" -gt 0 ] && ! assign "$existing"; then
+  body="$body_owed"
+fi
+
+if [ "$described" = "$outcomes" ]; then
+  gh issue edit "$existing" --body-file "$body"
+  {
+    echo "## Already reported"
+    echo ""
+    echo "Still failing the same way. #$existing now describes this run."
+  } >> "$GITHUB_STEP_SUMMARY"
+  exit 0
+fi
+
+# The comment goes on before the description is rewritten. The
+# description carries the outcomes line, and that line is what stops a
+# later run commenting again. Rewritten first, a comment that then
+# failed to post would leave the issue claiming this outcome had been
+# reported, and every run that ended the same way would pass in
+# silence. This way the cost of a failure here is a description one run
+# out of date, which the next run puts right.
+comment=$(mktemp)
+{
+  echo "The weekly check ended differently from the run this issue last described. The description above is rewritten to match this run."
+  echo ""
+  for paragraph in "${verdict[@]}"; do
+    echo "$paragraph"
+    echo ""
+  done
+  echo "$run_has"
+} > "$comment"
+gh issue comment "$existing" --body-file "$comment"
+
+gh issue edit "$existing" --body-file "$body"
+
+{
+  echo "## Reported a change"
+  echo ""
+  echo "The outcome is not the one #$existing described, so it was rewritten and commented on."
+} >> "$GITHUB_STEP_SUMMARY"
