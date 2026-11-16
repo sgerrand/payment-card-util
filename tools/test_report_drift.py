@@ -445,7 +445,15 @@ class OpeningAnIssue(unittest.TestCase):
 
     def test_an_issue_whose_number_cannot_be_read_stops_the_job(self):
         # It is opened owed an assignee, so the next failing run assigns it.
-        for created in ('', 'https://github.com/example/repo/issues/', 'Created.'):
+        for created in (
+            '',
+            'https://github.com/example/repo/issues/',
+            'Created.',
+            # Digits at the end, but not an issue's: reading 2 from this
+            # would rewrite issue #2.
+            'https://github.com/example/repo2',
+            'https://github.com/example/repo/issues/99\nhttps://github.com/example/repo/issues/100',
+        ):
             with self.subTest(created=created):
                 result = run(COSMETIC, created=created)
                 self.assertNotEqual(result.status, 0)

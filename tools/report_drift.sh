@@ -274,11 +274,17 @@ if [ -z "$existing" ]; then
   # an organisation, costs the assignment and not the issue.
   created=$(gh issue create --title "$title" --label "$LABEL" --body-file "$body_owed" \
     | tee /dev/stderr)
-  # gh prints the new issue's address, ending in its number. Without
-  # the number nothing more can be done to the issue here, so stop
-  # and say so. It is still owed an assignee, and the next failing run
-  # finds it by its title and assigns it.
-  number=$(grep --only-matching --extended-regexp '[0-9]+$' <<< "$created" || true)
+  # gh prints the new issue's address, ending in /issues/ and its
+  # number. Anything else, or more than one line, is not trusted: a
+  # number read from the wrong thing would assign, and rewrite the
+  # description of, some other issue. Without the number nothing more
+  # can be done to the issue here, so stop and say so. It is still owed
+  # an assignee, and the next failing run finds it by its title and
+  # assigns it.
+  number=
+  if [[ $created != *$'\n'* && $created =~ /issues/([0-9]+)$ ]]; then
+    number=${BASH_REMATCH[1]}
+  fi
   if [ -z "$number" ]; then
     echo "::error::Opened an issue but could not read its number from what gh printed, so could not assign it. The next failing run tries again."
     exit 1
