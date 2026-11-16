@@ -349,11 +349,17 @@ GRID = {
         ('failure', 'skipped'), ('cancelled', 'skipped'), ('skipped', 'skipped'), ('', ''),
         ('', 'success'), ('failure', 'success'), ('failure', 'failure'),
     ),
-    'GENERATED': ('success', 'failure', 'cancelled', 'skipped', ''),
+    # Never skipped: the step runs under always().
+    'GENERATED': ('success', 'failure', 'cancelled', ''),
     'CLI': (('success', 'true'), ('failure', 'true'), ('failure', ''), ('cancelled', ''), ('', '')),
-    'UPLOAD': ('success', 'failure', 'cancelled', 'skipped', ''),
     'VERSIONS': (('0.8.0', '0.7.3'), ('0.7.3', '0.7.3'), ('', '0.7.3'), ('0.8.0', '')),
 }
+
+# The upload only runs when the files moved. Otherwise it is skipped, or has
+# no outcome if the job fell over first, and crossing the other values with
+# those would be most of the runs for mixes that cannot happen.
+UPLOADS = ('success', 'failure', 'cancelled', 'skipped', '')
+UPLOADS_UNMOVED = ('skipped', '')
 
 
 def every_mix():
@@ -362,7 +368,8 @@ def every_mix():
         mix['CLI_OPTIONS'], mix['CLI_COMPARED'] = mix.pop('CLI')
         mix['REGENERATION'], mix['TESTS'] = mix.pop('REGENERATION_TESTS')
         mix['VERSION'], mix['RECORDED'] = mix.pop('VERSIONS')
-        yield mix
+        for upload in UPLOADS if mix['GENERATED'] == 'failure' else UPLOADS_UNMOVED:
+            yield {**mix, 'UPLOAD': upload}
 
 
 class EveryMix(unittest.TestCase):
