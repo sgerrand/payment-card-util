@@ -175,14 +175,20 @@ def run(outcomes, issues=(), fail='', created=None):
         return Run(done, state)
 
 
-def outcomes_line(outcomes):
-    keys = ('RESULT', 'TESTS', 'GENERATED', 'CLI_OPTIONS', 'CLI_COMPARED', 'RECORDED', 'REGENERATION')
-    return '<!-- outcomes: ' + '/'.join(outcomes.get(k) or '' for k in keys) + ' -->'
+ADVICE = re.compile(r'<!-- advice: [0-9]+ -->')
+
+
+def advice_line(text):
+    """The hidden line recording what a description advised."""
+    return next(line for line in text.splitlines() if line.startswith('<!-- advice: '))
 
 
 def issue(described, owed=False, newline='\n', title=TITLE, number=42):
-    """An issue already open, as gh issue list returns it."""
-    lines = ['An older description.', '', outcomes_line(described)] + ([OWED] if owed else [])
+    """An issue already open, as gh issue list returns it, last written by a
+    run with the outcomes in described."""
+    lines = run(described).description.splitlines()
+    if not owed:
+        lines = [line for line in lines if line != OWED]
     return {'number': number, 'title': title, 'body': newline.join(lines) + newline}
 
 
@@ -270,10 +276,10 @@ class Description(unittest.TestCase):
         self.assertIn('| Committed vectors built from | `unknown` |', result.description)
         self.assertEqual(result.titles, ['cardutil unknown: the weekly check failed'])
 
-    def test_the_outcomes_are_recorded_once(self):
+    def test_the_advice_is_recorded_once(self):
         text = self.describe(TESTS='failure')
-        self.assertEqual(text.count('<!-- outcomes: '), 1)
-        self.assertIn(outcomes_line({**COSMETIC, 'TESTS': 'failure'}), text)
+        self.assertEqual(text.count('<!-- advice: '), 1)
+        self.assertRegex(advice_line(text), ADVICE)
 
 
 class AttachedFiles(unittest.TestCase):
@@ -426,11 +432,35 @@ class EveryMix(unittest.TestCase):
             with self.subTest(**mix):
                 self.assertEqual(result.leftovers, [])
 
-    def test_every_description_records_its_outcomes_and_is_owed_an_assignee(self):
+    def test_every_description_records_its_advice_and_is_owed_an_assignee(self):
         for mix, result in self.runs:
             with self.subTest(**mix):
-                self.assertIn(outcomes_line(mix), result.description)
+                self.assertEqual(result.description.count('<!-- advice: '), 1)
+                self.assertRegex(advice_line(result.description), ADVICE)
                 self.assertEqual(result.description.splitlines()[-1], OWED)
+
+    def test_the_advice_line_changes_exactly_when_the_advice_does(self):
+        # The advice is the first line and everything between the table and
+        # the date, except the link to the run, which also says how the
+        # upload went, plus whether moved files are whole. Two runs that
+        # advise the same must record the same line, or someone is notified
+        # for nothing. Two that advise differently must not, or nobody is
+        # notified at all.
+        def advice(mix, text):
+            first, _table, rest = text.split('\n\n', 2)
+            lines = [first] + rest.split('\nThis describes the run of ')[0].splitlines()
+            said = '\n'.join(line for line in lines if not line.startswith('[The run]'))
+            if mix['GENERATED'] != 'failure':
+                files = 'none'
+            else:
+                files = 'whole' if mix['REGENERATION'] == 'success' else 'partial'
+            return said, files
+
+        pairs = {(advice(mix, result.description), advice_line(result.description)) for mix, result in self.runs}
+        said = {a for a, _ in pairs}
+        recorded = {line for _, line in pairs}
+        self.assertEqual(len(said), len(pairs))
+        self.assertEqual(len(recorded), len(pairs))
 
 
 class OpeningAnIssue(unittest.TestCase):
@@ -510,7 +540,7 @@ class AnIssueAlreadyOpen(unittest.TestCase):
         self.assertEqual(result.status, 0, result.stderr)
         self.assertEqual(result.kinds, ['label create', 'issue list', 'issue comment', 'issue edit'])
         self.assertIn('cardutil has changed behaviour', result.sent('issue comment')[0])
-        self.assertIn('The outcome is not the one #42 described', result.summary)
+        self.assertIn('The advice is not what #42 last gave', result.summary)
 
     def test_a_comment_gives_the_same_advice_as_the_description(self):
         result = run({**COSMETIC, 'CLI_OPTIONS': 'failure'}, issues=[issue({**COSMETIC, 'TESTS': 'failure'})])
@@ -526,6 +556,18 @@ class AnIssueAlreadyOpen(unittest.TestCase):
         self.assertNotEqual(result.status, 0)
         self.assertNotIn('issue edit', result.kinds)
         self.assertEqual(result.leftovers, [])
+
+    def test_outcomes_that_change_no_advice_notify_nobody(self):
+        for before, after in (
+            # A generator that failed one week and was cancelled the next.
+            ({'REGENERATION': 'failure', 'TESTS': 'skipped'}, {'REGENERATION': 'cancelled', 'TESTS': 'skipped'}),
+            # An upload that worked one week and failed the next.
+            ({}, {'UPLOAD': 'failure'}),
+        ):
+            with self.subTest(before=before, after=after):
+                result = run({**COSMETIC, **after}, issues=[issue({**COSMETIC, **before})])
+                self.assertEqual(result.status, 0, result.stderr)
+                self.assertEqual(result.kinds, ['label create', 'issue list', 'issue edit'])
 
     def test_files_no_longer_whole_get_a_comment(self):
         # The tests ended the same way, but committing the files is no

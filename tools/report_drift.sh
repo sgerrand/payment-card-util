@@ -61,8 +61,8 @@ gh label create "$LABEL" \
 # it. Each later run rewrites the description, so the advice matches
 # what is failing now, and the link is to a run whose log and files
 # have not expired. A comment is what notifies anyone, so one is only
-# added when the outcome is not the one the issue last described. The
-# description ends with a hidden line recording that outcome, and a
+# added when this run's advice is not what the issue last said. The
+# description ends with a hidden line recording that advice, and a
 # second one for as long as the issue is still owed an assignee.
 #
 # gh lists 30 issues unless told otherwise. One the list left out
@@ -73,8 +73,7 @@ found=$(gh issue list --label "$LABEL" --state open --limit 1000 \
   | jq --arg t "$title" 'map(select(.title == $t)) | first // empty')
 existing=$(jq --raw-output '.number // empty' <<< "$found")
 existing_body=$(jq --raw-output '.body // empty' <<< "$found" | tr -d '\r')
-described=$(sed -n 's/^<!-- outcomes: \(.*\) -->$/\1/p' <<< "$existing_body" | tail -n 1)
-outcomes="$RESULT/$TESTS/$GENERATED/$CLI_OPTIONS/${CLI_COMPARED:-}/${RECORDED:-}/${REGENERATION:-}"
+described=$(sed -n 's/^<!-- advice: \(.*\) -->$/\1/p' <<< "$existing_body" | tail -n 1)
 owed=$(grep --count --line-regexp --fixed-strings -- "$OWED_LINE" <<< "$existing_body" || true)
 
 # What a human has to do next depends on which check failed, so say
@@ -201,11 +200,6 @@ fi
 # done. So the files are only said to be attached when the step
 # succeeded. If it failed they are not there. Any other outcome, or
 # none reaching this job, leaves it open, and the issue says so.
-#
-# The upload is not part of the outcomes line. A comment is for a
-# check that ended differently, not for an upload that did. The
-# generators are part of it, because whether the files are whole
-# decides whether they are safe to commit.
 partial='may be only partly regenerated, so do not commit them'
 
 if [ "$GENERATED" != failure ]; then
@@ -245,6 +239,33 @@ print_verdict() {
   fi
 }
 
+# The hidden advice line is a checksum of what the issue tells someone
+# to do, rather than a list of the outcomes behind it. An outcome that
+# changes nothing said, such as a generator that failed one week and
+# was cancelled the next, then notifies nobody, and new wording or a
+# new input that changes the advice is covered without this line
+# having to learn about it.
+#
+# The link to the run is left out, since it changes every run. So is
+# the upload: a comment is for advice that changed, not for an upload
+# that ended differently. Whether the files are whole is kept in,
+# because it decides whether they are safe to commit.
+files=none
+if [ "$GENERATED" = failure ]; then
+  files=partial
+  if [ "$regenerated" = true ]; then
+    files=whole
+  fi
+fi
+advice=$(
+  {
+    echo "$ended"
+    printf '%s\n' "${verdict[@]}"
+    echo "$pull_requests_safe"
+    echo "$files"
+  } | cksum | cut -d ' ' -f 1
+)
+
 # The description and comment are written to files for gh to read. They
 # go in a directory of their own that is removed however this ends.
 work=$(mktemp -d "${TMPDIR:-/tmp}/report-drift.XXXXXX")
@@ -266,7 +287,7 @@ body="$work/body"
   echo ""
   echo "This describes the run of $(date -u +%F). Each weekly run that still fails rewrites it, so put notes in a comment."
   echo ""
-  echo "<!-- outcomes: $outcomes -->"
+  echo "<!-- advice: $advice -->"
 } > "$body"
 
 # The same description, still owed an assignee.
@@ -324,7 +345,7 @@ if [ "$owed" -gt 0 ] && ! assign "$existing"; then
   body="$body_owed"
 fi
 
-if [ "$described" = "$outcomes" ]; then
+if [ "$described" = "$advice" ]; then
   gh issue edit "$existing" --body-file "$body"
   {
     echo "## Already reported"
@@ -335,15 +356,14 @@ if [ "$described" = "$outcomes" ]; then
 fi
 
 # The comment goes on before the description is rewritten. The
-# description carries the outcomes line, and that line is what stops a
+# description carries the advice line, and that line is what stops a
 # later run commenting again. Rewritten first, a comment that then
-# failed to post would leave the issue claiming this outcome had been
-# reported, and every run that ended the same way would pass in
-# silence. This way the cost of a failure here is a description one run
+# failed to post would leave the issue claiming this advice had been
+# given, and every run that ended the same way would pass in silence. This way the cost of a failure here is a description one run
 # out of date, which the next run puts right.
 comment="$work/comment"
 {
-  echo "The weekly check ended differently from the run this issue last described. The description above is rewritten to match this run."
+  echo "The weekly check ended in a way that changes what this issue advises. The description above is rewritten to match this run."
   echo ""
   print_verdict
 } > "$comment"
@@ -354,5 +374,5 @@ gh issue edit "$existing" --body-file "$body"
 {
   echo "## Reported a change"
   echo ""
-  echo "The outcome is not the one #$existing described, so it was rewritten and commented on."
+  echo "The advice is not what #$existing last gave, so it was rewritten and commented on."
 } >> "$GITHUB_STEP_SUMMARY"
