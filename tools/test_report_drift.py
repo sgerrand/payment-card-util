@@ -515,6 +515,17 @@ class OpeningAnIssue(unittest.TestCase):
         self.assertNotEqual(result.status, 0)
         self.assertEqual(result.kinds, ['label create FAILED'])
 
+    def test_a_list_that_fails_stops_the_job(self):
+        # Read as no issue open, it would open a second one every week.
+        result = run(COSMETIC, issues=[issue(COSMETIC)], fail='issue-list')
+        self.assertNotEqual(result.status, 0)
+        self.assertEqual(result.kinds, ['label create', 'issue list FAILED'])
+
+    def test_an_issue_that_cannot_be_opened_stops_the_job(self):
+        result = run(COSMETIC, fail='issue-create')
+        self.assertNotEqual(result.status, 0)
+        self.assertEqual(result.kinds, ['label create', 'issue list', 'issue create FAILED'])
+
     def test_an_issue_for_another_version_is_left_alone(self):
         other = issue(COSMETIC, title='cardutil 0.7.9: the weekly check failed')
         result = run(COSMETIC, issues=[other])
@@ -534,6 +545,17 @@ class AnIssueAlreadyOpen(unittest.TestCase):
         self.assertEqual(result.status, 0, result.stderr)
         self.assertEqual(result.kinds, ['label create', 'issue list', 'issue edit'])
         self.assertIn('Still failing the same way. #42', result.summary)
+
+    def test_a_quiet_rewrite_that_fails_stops_the_job(self):
+        # Otherwise the description would go stale with nothing to show it.
+        result = run(COSMETIC, issues=[issue(COSMETIC)], fail='issue-edit')
+        self.assertNotEqual(result.status, 0)
+        self.assertEqual(result.kinds, ['label create', 'issue list', 'issue edit FAILED'])
+
+    def test_a_rewrite_after_a_comment_that_fails_stops_the_job(self):
+        result = run({**COSMETIC, 'TESTS': 'failure'}, issues=[issue(COSMETIC)], fail='issue-edit')
+        self.assertNotEqual(result.status, 0)
+        self.assertEqual(result.kinds, ['label create', 'issue list', 'issue comment', 'issue edit FAILED'])
 
     def test_a_different_outcome_comments_and_then_rewrites(self):
         result = run({**COSMETIC, 'TESTS': 'failure'}, issues=[issue(COSMETIC)])
