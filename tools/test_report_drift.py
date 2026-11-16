@@ -25,6 +25,7 @@ import itertools
 import json
 import os
 import pathlib
+import re
 import stat
 import subprocess
 import tempfile
@@ -101,6 +102,12 @@ class Run:
         self.summary = summary.read_text() if summary.exists() else ''
         titles = state / 'titles'
         self.titles = titles.read_text().splitlines() if titles.exists() else []
+        # TMPDIR points here, so anything the script made and did not remove
+        # is left beside what the stand in wrote.
+        ours = {'calls', 'issues.json', 'summary', 'titles'}
+        self.leftovers = sorted(
+            p.name for p in state.iterdir() if p.name not in ours and not re.fullmatch(r'[0-9]+\.txt', p.name)
+        )
 
     @property
     def kinds(self):
@@ -151,6 +158,7 @@ def run(outcomes, issues=(), fail='', created=None):
         env = {
             'PATH': f"{FAKE_GH_DIR.name}{os.pathsep}{os.environ['PATH']}",
             'HOME': tmp,
+            'TMPDIR': tmp,
             'STATE': tmp,
             'FAIL': fail,
             'GH_TOKEN': 'not-a-token',
@@ -412,6 +420,11 @@ class EveryMix(unittest.TestCase):
                 differs = mix['CLI_OPTIONS'] == 'failure' and mix['CLI_COMPARED'] == 'true'
                 self.assertEqual('The command line differs' in result.description, differs)
 
+    def test_nothing_temporary_is_left_behind(self):
+        for mix, result in self.runs:
+            with self.subTest(**mix):
+                self.assertEqual(result.leftovers, [])
+
     def test_every_description_records_its_outcomes_and_is_owed_an_assignee(self):
         for mix, result in self.runs:
             with self.subTest(**mix):
@@ -461,6 +474,11 @@ class OpeningAnIssue(unittest.TestCase):
                 self.assertIn(OWED, result.description)
                 self.assertIn('could not read its number', result.stdout)
 
+    def test_nothing_temporary_is_left_behind_when_the_job_stops(self):
+        for created in ('Created.', None):
+            with self.subTest(created=created):
+                self.assertEqual(run(COSMETIC, created=created).leftovers, [])
+
     def test_a_label_that_cannot_be_made_stops_the_job(self):
         result = run(COSMETIC, fail='label-create')
         self.assertNotEqual(result.status, 0)
@@ -499,6 +517,7 @@ class AnIssueAlreadyOpen(unittest.TestCase):
         result = run({**COSMETIC, 'TESTS': 'failure'}, issues=[issue(COSMETIC)], fail='issue-comment')
         self.assertNotEqual(result.status, 0)
         self.assertNotIn('issue edit', result.kinds)
+        self.assertEqual(result.leftovers, [])
 
     def test_files_no_longer_whole_get_a_comment(self):
         # The tests ended the same way, but committing the files is no

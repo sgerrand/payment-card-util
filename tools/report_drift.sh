@@ -231,7 +231,12 @@ else
   esac
 fi
 
-body=$(mktemp)
+# The description and comment are written to files for gh to read. They
+# go in a directory of their own that is removed however this ends.
+work=$(mktemp -d "${TMPDIR:-/tmp}/report-drift.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+
+body="$work/body"
 {
   echo "The weekly check against the newest cardutil release $ended."
   echo ""
@@ -259,7 +264,7 @@ body=$(mktemp)
 } > "$body"
 
 # The same description, still owed an assignee.
-body_owed=$(mktemp)
+body_owed="$work/body-owed"
 {
   cat "$body"
   echo "$OWED_LINE"
@@ -330,7 +335,7 @@ fi
 # reported, and every run that ended the same way would pass in
 # silence. This way the cost of a failure here is a description one run
 # out of date, which the next run puts right.
-comment=$(mktemp)
+comment="$work/comment"
 {
   echo "The weekly check ended differently from the run this issue last described. The description above is rewritten to match this run."
   echo ""
