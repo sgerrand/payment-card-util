@@ -276,6 +276,15 @@ class Description(unittest.TestCase):
         self.assertIn('| Committed vectors built from | `unknown` |', result.description)
         self.assertEqual(result.titles, ['cardutil unknown: the weekly check failed'])
 
+    def test_a_missing_version_is_not_blamed_on_a_new_release(self):
+        # Either one missing leaves no telling whether anything shipped.
+        for missing in ({'VERSION': None, 'RECORDED': None}, {'VERSION': None}, {'RECORDED': None}):
+            with self.subTest(missing=missing):
+                text = self.describe(**missing)
+                self.assertIn('cannot tell whether a new release caused this', text)
+                self.assertNotIn('cosmetic', text)
+                self.assertNotIn('Pull requests are unaffected', text)
+
     def test_the_advice_is_recorded_once(self):
         text = self.describe(TESTS='failure')
         self.assertEqual(text.count('<!-- advice: '), 1)
@@ -407,16 +416,17 @@ class EveryMix(unittest.TestCase):
             with self.subTest(**mix):
                 self.assertEqual('has the diff' in result.description, mix['GENERATED'] == 'failure')
 
-    def test_cosmetic_needs_every_check_run_and_no_sign_of_the_same_release(self):
-        # A version that did not arrive is not the same release: the files
-        # moved, so whatever was installed generates something else.
+    def test_cosmetic_needs_every_check_run_and_a_known_new_release(self):
+        # A version that did not arrive leaves no telling whether the files
+        # moved because of a new release or for some other reason, such as
+        # a hand edit that committing would hide.
         for mix, result in self.runs:
             with self.subTest(**mix):
                 if 'cosmetic' in result.description:
                     self.assertEqual(mix['REGENERATION'], 'success')
                     self.assertEqual((mix['TESTS'], mix['GENERATED']), ('success', 'failure'))
                     self.assertIn(mix['CLI_OPTIONS'], ('success', 'failure'))
-                    self.assertNotEqual(mix['VERSION'], mix['RECORDED'])
+                    self.assertEqual((mix['VERSION'], mix['RECORDED']), ('0.8.0', '0.7.3'))
 
     def test_pull_requests_are_only_said_safe_for_a_new_release(self):
         for mix, result in self.runs:

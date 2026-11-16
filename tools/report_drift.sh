@@ -99,6 +99,9 @@ owed=$(grep --count --line-regexp --fixed-strings -- "$OWED_LINE" <<< "$existing
 # The same goes for blaming cardutil. If the newest release is the
 # one the committed files were built from, nothing new has shipped,
 # and this run did exactly what the check on every pull request does.
+# If either version did not reach this job, there is no telling which
+# of the two it was, so nothing is said about what the files or the
+# tests mean.
 regenerated=false
 if [ "${REGENERATION:-}" = success ]; then
   regenerated=true
@@ -146,6 +149,8 @@ fi
 
 if [ "$ran_all" = false ]; then
   verdict+=('Not every check ran to the end, so nothing is read into the tests or the generated files. A check that did not run has not passed: do not regenerate and commit on the strength of this. The run log says where the job fell over.')
+elif [ "$release" = unknown ]; then
+  verdict+=('The run did not say which cardutil it installed, or which one the committed files were built from, so it cannot tell whether a new release caused this. Do not regenerate and commit on the strength of this. The run log says where the versions went missing.')
 elif [ "$release" = same ]; then
   verdict+=("The newest release is still \`$RECORDED\`, the one the committed files were built from, so no new release caused this. Pull requests run the same checks against the same release, so they will fail the same way unless this was a one-off. The run log says what went wrong.")
 else
