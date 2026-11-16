@@ -216,6 +216,16 @@ class Description(unittest.TestCase):
         self.assertNotIn('cosmetic', text)
         self.assertNotIn('Pull requests are unaffected', text)
 
+    def test_tests_that_ran_after_a_generator_failed_are_not_read(self):
+        # The workflow does not allow this today. If it ever did, the tests
+        # passing would say nothing about half regenerated files.
+        for regeneration in ('failure', 'cancelled', 'skipped', '', None):
+            with self.subTest(regeneration=regeneration):
+                text = self.describe(REGENERATION=regeneration)
+                self.assertIn('Not every check ran to the end', text)
+                self.assertNotIn('cosmetic', text)
+                self.assertNotIn('Pull requests are unaffected', text)
+
     def test_a_differing_option_is_reported_even_without_a_new_release(self):
         text = self.describe(VERSION='0.7.3', GENERATED='success', CLI_OPTIONS='failure', UPLOAD='skipped')
         self.assertIn('The command line differs', text)
@@ -307,14 +317,22 @@ class AttachedFiles(unittest.TestCase):
 
 # Every value each outcome can take, and none at all for an output that did
 # not arrive. Some go in pairs rather than on their own: CLI_COMPARED with
-# CLI_OPTIONS, the tests with the generators, since the tests only run once
-# the generators have succeeded, and the newest release with the one the
-# files came from, since what matters is whether they are known and the same.
+# CLI_OPTIONS, the tests with the generators, and the newest release with the
+# one the files came from, since what matters is whether they are known and
+# the same.
+#
+# The tests only start once the generators have succeeded, so most pairs of
+# those two that the workflow can produce have the generators succeeding or
+# the tests skipped. ('skipped', 'skipped') is an install or setup step
+# failing. The pairs where the tests ran after the generators did not succeed
+# cannot happen today, and are here so the report stays right if the
+# workflow ever lets them.
 GRID = {
     'RESULT': ('failure', 'cancelled'),
     'REGENERATION_TESTS': (
         ('success', 'success'), ('success', 'failure'), ('success', 'cancelled'),
-        ('failure', 'skipped'), ('cancelled', 'skipped'), ('', ''), ('', 'success'),
+        ('failure', 'skipped'), ('cancelled', 'skipped'), ('skipped', 'skipped'), ('', ''),
+        ('', 'success'), ('failure', 'success'), ('failure', 'failure'),
     ),
     'GENERATED': ('success', 'failure', 'cancelled', 'skipped', ''),
     'CLI': (('success', 'true'), ('failure', 'true'), ('failure', ''), ('cancelled', ''), ('', '')),
@@ -373,6 +391,7 @@ class EveryMix(unittest.TestCase):
         for mix, result in self.runs:
             with self.subTest(**mix):
                 if 'cosmetic' in result.description:
+                    self.assertEqual(mix['REGENERATION'], 'success')
                     self.assertEqual((mix['TESTS'], mix['GENERATED']), ('success', 'failure'))
                     self.assertIn(mix['CLI_OPTIONS'], ('success', 'failure'))
                     self.assertNotEqual(mix['VERSION'], mix['RECORDED'])
@@ -381,6 +400,7 @@ class EveryMix(unittest.TestCase):
         for mix, result in self.runs:
             with self.subTest(**mix):
                 if 'Pull requests are unaffected' in result.description:
+                    self.assertEqual(mix['REGENERATION'], 'success')
                     self.assertEqual((mix['VERSION'], mix['RECORDED']), ('0.8.0', '0.7.3'))
                     self.assertNotEqual((mix['TESTS'], mix['GENERATED']), ('failure', 'success'))
                     for check in ('TESTS', 'GENERATED', 'CLI_OPTIONS'):

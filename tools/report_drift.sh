@@ -85,18 +85,27 @@ owed=$(grep --count --line-regexp --fixed-strings -- "$OWED_LINE" <<< "$existing
 #
 # Each paragraph claims only what the outcomes prove. A step that was
 # skipped or cancelled is not a pass, so nothing is read into the
-# tests or the generated files unless all three ran. If a generator
-# falls over half way, the files have moved and the tests never ran,
-# and calling that cosmetic would invite someone to commit half a
-# regeneration. And one failure does not rule out another, so the
-# generated files and the command line get a paragraph each. The
-# command line check answers its own question, so what it found is
-# said even when the others did not finish.
+# tests or the generated files unless the generators succeeded and all
+# three checks ran. If a generator falls over half way, the files have
+# moved and whatever ran after it ran against half a regeneration, and
+# calling that cosmetic would invite someone to commit it. The
+# workflow only starts the tests once the generators have succeeded,
+# but this does not lean on that.
+#
+# One failure does not rule out another, so the generated files and
+# the command line get a paragraph each. The command line check
+# answers its own question, so what it found is said even when the
+# others did not finish.
 #
 # The same goes for blaming cardutil. If the newest release is the
 # one the committed files were built from, nothing new has shipped,
 # and this run did exactly what the check on every pull request does.
-ran_all=true
+regenerated=false
+if [ "${REGENERATION:-}" = success ]; then
+  regenerated=true
+fi
+
+ran_all=$regenerated
 for outcome in "$TESTS" "$GENERATED" "$CLI_OPTIONS"; do
   case "$outcome" in
     success | failure) ;;
@@ -197,10 +206,6 @@ fi
 # check that ended differently, not for an upload that did. The
 # generators are part of it, because whether the files are whole
 # decides whether they are safe to commit.
-regenerated=false
-if [ "${REGENERATION:-}" = success ]; then
-  regenerated=true
-fi
 partial='may be only partly regenerated, so do not commit them'
 
 if [ "$GENERATED" != failure ]; then

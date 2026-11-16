@@ -156,6 +156,11 @@ jobs:
           python tools/gen_config.py "$CONFIG_FILE"
           python tools/gen_vectors.py "$VECTORS_FILE"
 
+      # No condition of its own, on purpose: this only starts once both
+      # generators have succeeded, so the tests never run against half a
+      # regeneration. The drift report does not lean on that, since it
+      # checks the generators' outcome itself, but a test result over
+      # partial files would be noise.
       - name: Run the tests against whatever was just generated
         id: tests
         run: mvn --batch-mode --no-transfer-progress verify
