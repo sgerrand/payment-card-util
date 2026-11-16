@@ -504,6 +504,10 @@ class OpeningAnIssue(unittest.TestCase):
             # would rewrite issue #2.
             'https://github.com/example/repo2',
             'https://github.com/example/repo/issues/99\nhttps://github.com/example/repo/issues/100',
+            # An issue, but not where this one was opened.
+            'https://github.com/other/repo/issues/99',
+            'junk/issues/99',
+            'https://github.com/example/repo/issues/99 ',
         ):
             with self.subTest(created=created):
                 result = run(COSMETIC, created=created)
