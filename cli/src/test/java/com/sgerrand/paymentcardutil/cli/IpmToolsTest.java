@@ -299,6 +299,36 @@ class IpmToolsTest {
     }
 
     @Test
+    void csvToIpmRebuildsAFileWithAHeaderRecord() throws IOException {
+        // A header carries its file id in PDS 0105, which the CSV holds both
+        // packed in DE 48 and split into PDS0105_SF1 to SF4. cardutil 0.7.4
+        // fails on the split columns when building the file back up.
+        Path withHeader = directory.resolve("with-header.ipm");
+        Iso8583Message header =
+                Iso8583Message.builder()
+                        .mti("1644")
+                        .de(24, "697")
+                        .pds(105, "002" + "261116" + "01234567890" + "00001")
+                        .build();
+        try (OutputStream out = Files.newOutputStream(withHeader);
+                IpmWriter writer = IpmWriter.blocked(out)) {
+            writer.write(header);
+            writer.writeAll(MESSAGES);
+        }
+        Path csv = directory.resolve("with-header.csv");
+        Path rebuilt = directory.resolve("with-header-rebuilt.ipm");
+        run("mci-ipm-to-csv", withHeader.toString(), "-o", csv.toString(), "--unmask-pan");
+        assertTrue(
+                Files.readAllLines(csv).get(1).contains(",002,261116,01234567890,00001,"),
+                "the file id is split into its parts");
+        assertEquals(0, run("mci-csv-to-ipm", csv.toString(), "-o", rebuilt.toString()));
+
+        assertEquals(
+                readMessages(withHeader, Iso8583Options.defaults(), true),
+                readMessages(rebuilt, Iso8583Options.defaults(), true));
+    }
+
+    @Test
     void encodeChangesCharacterSetAndBlocking() throws IOException {
         Path encoded = directory.resolve("encoded.ipm");
         assertEquals(

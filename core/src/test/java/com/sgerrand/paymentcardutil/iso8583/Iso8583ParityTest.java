@@ -64,11 +64,11 @@ class Iso8583ParityTest {
 
     static {
         // Guards against silently testing against an older generated file.
-        if (!Vectors.cardutilVersion().equals("0.7.3")) {
+        if (!Vectors.cardutilVersion().equals("0.7.4")) {
             System.err.println(
                     "Vectors came from cardutil "
                             + Vectors.cardutilVersion()
-                            + ", not the 0.7.3 this port was written against.");
+                            + ", not the 0.7.4 this port was written against.");
         }
     }
 }

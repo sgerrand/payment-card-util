@@ -8,7 +8,7 @@ import java.util.Map;
  * The Mastercard IPM message and parameter file layout.
  *
  * <p>Generated from the config of the Python cardutil package, version
- * 0.7.3. Do not edit by hand; see tools/gen_config.py.
+ * 0.7.4. Do not edit by hand; see tools/gen_config.py.
  *
  * @see <a href="https://github.com/adelosa/cardutil">adelosa/cardutil</a>
  */
@@ -23,6 +23,7 @@ final class DefaultConfig {
                 .bitConfig(bitConfig())
                 .outputDataElements(outputDataElements())
                 .parameterTables(parameterTables())
+                .pdsSubfields(pdsSubfields())
                 .build();
     }
 
@@ -132,7 +133,8 @@ final class DefaultConfig {
                 "DE49", "DE50", "DE63", "DE71", "DE73",
                 "DE93", "DE94", "DE95", "DE100", "PDS0023",
                 "PDS0052", "PDS0122", "PDS0148", "PDS0158", "PDS0165",
-                "DE43_NAME", "DE43_SUBURB", "DE43_POSTCODE", "ICC_DATA");
+                "PDS0105_SF1", "PDS0105_SF2", "PDS0105_SF3", "PDS0105_SF4", "DE43_NAME",
+                "DE43_SUBURB", "DE43_POSTCODE", "ICC_DATA");
     }
 
     private static Map<String, ParamTable> parameterTables() {
@@ -142,6 +144,21 @@ final class DefaultConfig {
         tables.put("IP0075T1", tableIP0075T1());
         tables.put("IP0095T1", tableIP0095T1());
         return tables;
+    }
+
+    private static Map<String, Map<String, PdsSubfield>> pdsSubfields() {
+        Map<String, Map<String, PdsSubfield>> subfields = new LinkedHashMap<>();
+        Map<String, PdsSubfield> pds0001 = new LinkedHashMap<>();
+        pds0001.put("1", new PdsSubfield("Account Number Type", 0, 2, ValueType.TEXT));
+        pds0001.put("2", new PdsSubfield("Account Number", 2, 19, ValueType.TEXT));
+        subfields.put("0001", pds0001);
+        Map<String, PdsSubfield> pds0105 = new LinkedHashMap<>();
+        pds0105.put("1", new PdsSubfield("File Type", 0, 3, ValueType.TEXT));
+        pds0105.put("2", new PdsSubfield("File Reference Date", 3, 6, ValueType.TEXT));
+        pds0105.put("3", new PdsSubfield("Processor ID", 9, 11, ValueType.TEXT));
+        pds0105.put("4", new PdsSubfield("File Sequence Number", 20, 5, ValueType.TEXT));
+        subfields.put("0105", pds0105);
+        return subfields;
     }
 
     private static ParamTable tableIP0006T1() {

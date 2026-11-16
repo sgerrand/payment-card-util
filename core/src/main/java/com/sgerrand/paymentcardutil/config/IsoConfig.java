@@ -26,6 +26,7 @@ public final class IsoConfig {
     private final Map<Integer, FieldConfig> bitConfig;
     private final List<String> outputDataElements;
     private final Map<String, ParamTable> parameterTables;
+    private final Map<String, Map<String, PdsSubfield>> pdsSubfields;
     private final int maxVbsRecordLength;
 
     private IsoConfig(Builder builder) {
@@ -33,6 +34,12 @@ public final class IsoConfig {
         this.outputDataElements = List.copyOf(builder.outputDataElements);
         this.parameterTables =
                 Collections.unmodifiableMap(new LinkedHashMap<>(builder.parameterTables));
+        Map<String, Map<String, PdsSubfield>> subfields = new LinkedHashMap<>();
+        builder.pdsSubfields.forEach(
+                (tag, parts) ->
+                        subfields.put(
+                                tag, Collections.unmodifiableMap(new LinkedHashMap<>(parts))));
+        this.pdsSubfields = Collections.unmodifiableMap(subfields);
         this.maxVbsRecordLength = builder.maxVbsRecordLength;
     }
 
@@ -52,6 +59,7 @@ public final class IsoConfig {
         builder.bitConfig.putAll(bitConfig);
         builder.outputDataElements.addAll(outputDataElements);
         builder.parameterTables.putAll(parameterTables);
+        builder.pdsSubfields.putAll(pdsSubfields);
         builder.maxVbsRecordLength = maxVbsRecordLength;
         return builder;
     }
@@ -104,6 +112,30 @@ public final class IsoConfig {
         return Optional.ofNullable(parameterTables.get(tableId));
     }
 
+    /**
+     * The parts read out of private data subelements, by four character PDS tag and then by
+     * subfield number.
+     *
+     * <p>A message read with this layout holds each part next to its subelement, keyed {@code
+     * PDS<tag>_SF<number>}: the built in layout splits {@code PDS0105} into {@code PDS0105_SF1} to
+     * {@code PDS0105_SF4}. A part that runs past the end of the subelement is left out. The parts
+     * are only ever read: writing a message ignores them and writes the subelement itself, so
+     * change {@code PDS0105} to change what goes in the file.
+     */
+    public Map<String, Map<String, PdsSubfield>> pdsSubfields() {
+        return pdsSubfields;
+    }
+
+    /**
+     * The parts read out of one private data subelement, by subfield number.
+     *
+     * @param tag the four character PDS tag, such as {@code 0105}
+     * @return the parts, or an empty map if the subelement is not split
+     */
+    public Map<String, PdsSubfield> pdsSubfields(String tag) {
+        return pdsSubfields.getOrDefault(tag, Map.of());
+    }
+
     /** Longest VBS record accepted before a file is called malformed. */
     public int maxVbsRecordLength() {
         return maxVbsRecordLength;
@@ -115,6 +147,7 @@ public final class IsoConfig {
         private final Map<Integer, FieldConfig> bitConfig = new TreeMap<>();
         private final List<String> outputDataElements = new java.util.ArrayList<>();
         private final Map<String, ParamTable> parameterTables = new LinkedHashMap<>();
+        private final Map<String, Map<String, PdsSubfield>> pdsSubfields = new LinkedHashMap<>();
         private int maxVbsRecordLength = DEFAULT_MAX_VBS_RECORD_LENGTH;
 
         private Builder() {}
@@ -158,6 +191,41 @@ public final class IsoConfig {
         public Builder parameterTables(Map<String, ParamTable> tables) {
             parameterTables.clear();
             parameterTables.putAll(tables);
+            return this;
+        }
+
+        /**
+         * Sets the parts read out of one private data subelement, replacing any already set for it.
+         * An empty map stops the subelement being split.
+         *
+         * @param tag the four character PDS tag, such as {@code 0105}
+         * @param subfields the parts, by subfield number, in the order they should be read
+         */
+        public Builder pdsSubfields(String tag, Map<String, PdsSubfield> subfields) {
+            Objects.requireNonNull(tag, "tag");
+            if (tag.length() != 4) {
+                throw new IllegalArgumentException(
+                        "A PDS tag is four characters, such as 0105: " + tag);
+            }
+            Map<String, PdsSubfield> copy = new LinkedHashMap<>();
+            Objects.requireNonNull(subfields, "subfields")
+                    .forEach(
+                            (number, part) ->
+                                    copy.put(
+                                            Objects.requireNonNull(number, "number"),
+                                            Objects.requireNonNull(part, "subfield")));
+            if (copy.isEmpty()) {
+                pdsSubfields.remove(tag);
+            } else {
+                pdsSubfields.put(tag, copy);
+            }
+            return this;
+        }
+
+        /** Replaces every subelement's parts. An empty map splits none of them. */
+        public Builder pdsSubfields(Map<String, Map<String, PdsSubfield>> subfields) {
+            pdsSubfields.clear();
+            subfields.forEach(this::pdsSubfields);
             return this;
         }
 

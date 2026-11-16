@@ -135,7 +135,8 @@ public final class Iso8583 {
      *
      * <p>Any {@code PDSxxxx} values are packed into the data elements set up to carry them, in tag
      * order. Where a message holds both {@code PDSxxxx} values and the data element that carries
-     * them, the packed values win.
+     * them, the packed values win. Subfield keys such as {@code PDS0105_SF1} are not written: the
+     * subelement they were read from is.
      *
      * <p>The message needs a message type indicator of four characters. cardutil writes one
      * without, and then cannot read what it wrote; this refuses instead.

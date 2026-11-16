@@ -182,7 +182,7 @@ jobs:
           else
             case "$TESTS/$GENERATED" in
               success/failure)
-                verdict+=('The generated files moved and the tests passed against the new ones, so that change looks cosmetic. Regenerating both files and committing the result is probably all it needs.')
+                verdict+=('The generated files moved and the tests passed against the new ones. That does not make the change cosmetic: the tests only cover the cases already in the vectors, and a new feature no case uses passes too. Read what cardutil changed before regenerating, and add vectors for anything new.')
                 ;;
               failure/failure)
                 verdict+=('The generated files moved and the tests failed against the new ones, so cardutil has changed behaviour and this port needs updating to match. Do not simply regenerate and commit.')
