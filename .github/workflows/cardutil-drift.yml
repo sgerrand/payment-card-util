@@ -45,17 +45,17 @@ jobs:
     needs: [check]
     if: always() && needs.check.result != 'success' && github.event_name == 'schedule'
     permissions:
-      contents: read # to check out the script
+      contents: read # to fetch the script
       issues: write
 
     steps:
-      # A plain checkout. Anything cleverer would only be tried for real the
-      # day a check fails.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
       # What the script does, and why, is written in the script.
+      #
+      # It is fetched through the API rather than checked out, so the only
+      # thing this job needs working is the API it files the issue through.
+      # A git outage, or a checkout action that stops running, must not be
+      # what keeps a failure from being reported. It is run with bash, as the
+      # tests run it, so its file mode does not matter either.
       - name: Open or find the issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -72,4 +72,8 @@ jobs:
           REGENERATION: ${{ needs.check.outputs.regeneration }}
           UPLOAD: ${{ needs.check.outputs.regenerated-files-upload }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: tools/report_drift.sh
+        run: |
+          script="$RUNNER_TEMP/report_drift.sh"
+          gh api --header 'Accept: application/vnd.github.raw+json' \
+            "repos/$GH_REPO/contents/tools/report_drift.sh?ref=$GITHUB_SHA" > "$script"
+          bash "$script"

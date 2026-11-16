@@ -170,6 +170,7 @@ def run(outcomes, issues=(), fail='', created=None):
             **({'CREATED': created} if created is not None else {}),
             **{k: v for k, v in outcomes.items() if v is not None},
         }
+        # Run with bash, as the workflow runs it.
         done = subprocess.run(['bash', str(SCRIPT)], env=env, capture_output=True, text=True)
         return Run(done, state)
 
