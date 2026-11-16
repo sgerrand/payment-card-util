@@ -231,6 +231,20 @@ else
   esac
 fi
 
+# What to do, and where to look. The description and a comment both
+# say it, so it is written in one place and they cannot disagree.
+print_verdict() {
+  for paragraph in "${verdict[@]}"; do
+    echo "$paragraph"
+    echo ""
+  done
+  echo "$run_has"
+  if [ "$pull_requests_safe" = true ]; then
+    echo ""
+    echo "Pull requests are unaffected: they are checked against \`$RECORDED\`, not against the newest release."
+  fi
+}
+
 # The description and comment are written to files for gh to read. They
 # go in a directory of their own that is removed however this ends.
 work=$(mktemp -d "${TMPDIR:-/tmp}/report-drift.XXXXXX")
@@ -248,15 +262,7 @@ body="$work/body"
   echo "| Generated files | ${GENERATED:-unknown} |"
   echo "| Command line options | ${CLI_OPTIONS:-unknown} |"
   echo ""
-  for paragraph in "${verdict[@]}"; do
-    echo "$paragraph"
-    echo ""
-  done
-  echo "$run_has"
-  if [ "$pull_requests_safe" = true ]; then
-    echo ""
-    echo "Pull requests are unaffected: they are checked against \`$RECORDED\`, not against the newest release."
-  fi
+  print_verdict
   echo ""
   echo "This describes the run of $(date -u +%F). Each weekly run that still fails rewrites it, so put notes in a comment."
   echo ""
@@ -339,11 +345,7 @@ comment="$work/comment"
 {
   echo "The weekly check ended differently from the run this issue last described. The description above is rewritten to match this run."
   echo ""
-  for paragraph in "${verdict[@]}"; do
-    echo "$paragraph"
-    echo ""
-  done
-  echo "$run_has"
+  print_verdict
 } > "$comment"
 gh issue comment "$existing" --body-file "$comment"
 

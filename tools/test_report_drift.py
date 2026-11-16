@@ -512,6 +512,13 @@ class AnIssueAlreadyOpen(unittest.TestCase):
         self.assertIn('cardutil has changed behaviour', result.sent('issue comment')[0])
         self.assertIn('The outcome is not the one #42 described', result.summary)
 
+    def test_a_comment_gives_the_same_advice_as_the_description(self):
+        result = run({**COSMETIC, 'CLI_OPTIONS': 'failure'}, issues=[issue({**COSMETIC, 'TESTS': 'failure'})])
+        comment = result.sent('issue comment')[0]
+        advice = comment.split('\n\n', 1)[1]
+        self.assertIn('Pull requests are unaffected', advice)
+        self.assertIn(advice, result.sent('issue edit')[0])
+
     def test_a_comment_that_fails_leaves_the_old_outcomes_in_place(self):
         # Rewriting first would record an outcome nobody had been told about,
         # and every later run that ended the same way would say nothing.
