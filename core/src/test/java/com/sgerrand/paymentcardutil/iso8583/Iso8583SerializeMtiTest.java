@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
  * The message type indicator sits in front of the bitmap, so a missing or short one shifts the
  * whole record along and nothing can read it back.
  *
- * <p>cardutil 0.7.3 writes such a record anyway, and then fails on its own output with "Failed
+ * <p>cardutil 0.7.4 writes such a record anyway, and then fails on its own output with "Failed
  * decoding MTI field". This port refuses to write it, which is one of the divergences listed in the
  * README.
  */

@@ -1,5 +1,7 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
+import com.sgerrand.paymentcardutil.config.PdsSubfield;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,6 +13,9 @@ import java.util.TreeMap;
  *
  * <p>A PDS is a four digit tag, a three digit length, then that many characters of data. Several
  * are packed one after another into a data element such as DE 48.
+ *
+ * <p>Some subelements are split further into fixed position parts, kept as {@code PDSxxxx_SFn}
+ * keys. Those are read only: packing skips them, see {@link #pack}.
  */
 final class PdsCodec {
 
@@ -25,15 +30,32 @@ final class PdsCodec {
 
     private PdsCodec() {}
 
+    /** The text between a subelement's key and its subfield number, as in {@code PDS0105_SF1}. */
+    static final String SUBFIELD_MARKER = "_SF";
+
     /**
-     * Reads the subelements packed into one data element.
+     * Reads the subelements packed into one data element, splitting none of them.
      *
      * @param fieldData the data element's text
      * @return subelement values keyed {@code PDSxxxx}, in the order they appeared
      * @throws Iso8583Exception if a tag or length is cut short or is not a number
      */
-    static Map<String, String> unpack(String fieldData) {
-        Map<String, String> values = new LinkedHashMap<>();
+    static Map<String, Object> unpack(String fieldData) {
+        return unpack(fieldData, Map.of());
+    }
+
+    /**
+     * Reads the subelements packed into one data element, and the parts of any the layout splits.
+     *
+     * @param fieldData the data element's text
+     * @param subfields the parts to read, by PDS tag and then subfield number
+     * @return subelement values keyed {@code PDSxxxx}, each followed by its parts keyed {@code
+     *     PDSxxxx_SFn}, in the order they appeared
+     * @throws Iso8583Exception if a tag or length is cut short or is not a number
+     */
+    static Map<String, Object> unpack(
+            String fieldData, Map<String, Map<String, PdsSubfield>> subfields) {
+        Map<String, Object> values = new LinkedHashMap<>();
         int pointer = 0;
 
         while (pointer < fieldData.length()) {
@@ -62,10 +84,49 @@ final class PdsCodec {
                                 + (fieldData.length() - headerEnd)
                                 + " remain");
             }
-            values.put("PDS" + tag, fieldData.substring(headerEnd, headerEnd + length));
+            String data = fieldData.substring(headerEnd, headerEnd + length);
+            values.put("PDS" + tag, data);
+            Map<String, PdsSubfield> parts = subfields.get(tag);
+            if (parts != null) {
+                unpackSubfields(tag, data, parts, values);
+            }
             pointer = headerEnd + length;
         }
         return values;
+    }
+
+    /**
+     * Copies the configured parts out of one subelement.
+     *
+     * <p>Matches cardutil's {@code _parse_pds_subfields}: a part that runs past the end of the data
+     * is left out rather than cut short, and a number that does not read as one stays text.
+     */
+    private static void unpackSubfields(
+            String tag, String data, Map<String, PdsSubfield> parts, Map<String, Object> values) {
+        for (Map.Entry<String, PdsSubfield> entry : parts.entrySet()) {
+            PdsSubfield part = entry.getValue();
+            // As a long, so a start and length near the int limit cannot wrap
+            // round and pass the check.
+            if ((long) part.start() + part.length() > data.length()) {
+                continue;
+            }
+            String text = data.substring(part.start(), part.end());
+            values.put("PDS" + tag + SUBFIELD_MARKER + entry.getKey(), subfieldValue(text, part));
+        }
+    }
+
+    private static Object subfieldValue(String text, PdsSubfield part) {
+        try {
+            return switch (part.valueType()) {
+                case LONG -> Long.parseLong(text.trim());
+                case DECIMAL -> new BigDecimal(text.trim());
+                case TEXT, DATETIME -> text;
+            };
+        } catch (NumberFormatException e) {
+            // cardutil keeps the text when it does not convert, rather than
+            // failing the whole message over one part.
+            return text;
+        }
     }
 
     /**
@@ -75,13 +136,18 @@ final class PdsCodec {
      * <p>Tags are packed in ascending order. A group is closed off once adding the next subelement
      * would take it past {@value #MAX_GROUP_LENGTH} characters.
      *
+     * <p>Subfield keys such as {@code PDS0105_SF1} are skipped. They are parts read out of a
+     * subelement that is itself in the message, so the subelement is what gets written. cardutil
+     * 0.7.4 tries to pack them as subelements too, and fails on every message it read with one, so
+     * it cannot write back a file it has just read.
+     *
      * @return one string per data element needed, or an empty list if the message has no PDS values
      */
     static List<String> pack(Map<String, Object> messageValues) {
         Map<String, Object> pdsValues = new TreeMap<>();
         messageValues.forEach(
                 (key, value) -> {
-                    if (key.startsWith("PDS")) {
+                    if (key.startsWith("PDS") && !isSubfieldKey(key)) {
                         pdsValues.put(key, value);
                     }
                 });
@@ -118,6 +184,24 @@ final class PdsCodec {
             groups.add(group.toString());
         }
         return groups;
+    }
+
+    /**
+     * Whether a key names a part of a subelement, such as {@code PDS0105_SF1}: {@code PDS}, one or
+     * more digits, then {@value #SUBFIELD_MARKER}.
+     */
+    static boolean isSubfieldKey(String key) {
+        int marker = key.indexOf(SUBFIELD_MARKER, 3);
+        if (marker <= 3) {
+            return false;
+        }
+        for (int i = 3; i < marker; i++) {
+            char c = key.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static int parseTag(String key) {

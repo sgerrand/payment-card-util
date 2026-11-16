@@ -6,6 +6,7 @@ import com.sgerrand.paymentcardutil.config.FieldConfig;
 import com.sgerrand.paymentcardutil.config.FieldType;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.config.ParamTable;
+import com.sgerrand.paymentcardutil.config.PdsSubfield;
 import com.sgerrand.paymentcardutil.config.ValueType;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,6 +32,9 @@ import java.util.Map;
  *   "output_data_elements": ["MTI", "DE2"],
  *   "mci_parameter_tables": {
  *     "IP0006T1": {"card_program_id": {"start": 19, "end": 22}}
+ *   },
+ *   "PDS": {
+ *     "0105": {"subfields": {"1": {"field_name": "File Type", "field_start": 0, "field_length": 3}}}
  *   }
  * }
  * }</pre>
@@ -38,7 +42,11 @@ import java.util.Map;
  * <p>Anything the file leaves out keeps its built in value, so a config only has to say what is
  * different. That holds element by element: naming DE 2 changes DE 2 and leaves the other sixty
  * alone. The one exception is {@code output_data_elements}, which is a column order rather than a
- * set of parts, so a file naming it replaces the list outright.
+ * set of parts, so a file naming it replaces the list outright. {@code PDS} goes subelement by
+ * subelement the same way; give one an empty {@code subfields} to stop it being split.
+ *
+ * <p>cardutil itself ignores a {@code PDS} section in a config file and always splits the
+ * subelements its own built in config names. Here the file is read, as every other section is.
  */
 final class ConfigFiles {
 
@@ -99,6 +107,9 @@ final class ConfigFiles {
                     .values()
                     .forEach(builder::parameterTable);
         }
+        if (root.has("PDS")) {
+            readPdsSubfields(root.get("PDS")).forEach(builder::pdsSubfields);
+        }
         return builder.build();
     }
 
@@ -121,6 +132,35 @@ final class ConfigFiles {
                                             text(field, "field_processor_config", null)));
                         });
         return fields;
+    }
+
+    private static Map<String, Map<String, PdsSubfield>> readPdsSubfields(JsonNode node) {
+        Map<String, Map<String, PdsSubfield>> subfields = new LinkedHashMap<>();
+        node.properties()
+                .forEach(
+                        tagEntry -> {
+                            Map<String, PdsSubfield> parts = new LinkedHashMap<>();
+                            tagEntry.getValue()
+                                    .path("subfields")
+                                    .properties()
+                                    .forEach(
+                                            part -> {
+                                                JsonNode field = part.getValue();
+                                                parts.put(
+                                                        part.getKey(),
+                                                        new PdsSubfield(
+                                                                text(field, "field_name", ""),
+                                                                field.path("field_start").asInt(0),
+                                                                field.path("field_length").asInt(0),
+                                                                PdsSubfield.valueTypeFor(
+                                                                        text(
+                                                                                field,
+                                                                                "field_python_type",
+                                                                                null))));
+                                            });
+                            subfields.put(tagEntry.getKey(), parts);
+                        });
+        return subfields;
     }
 
     private static Map<String, ParamTable> readParameterTables(JsonNode node) {

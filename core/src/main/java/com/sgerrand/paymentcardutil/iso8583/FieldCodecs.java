@@ -2,6 +2,7 @@ package com.sgerrand.paymentcardutil.iso8583;
 
 import com.sgerrand.paymentcardutil.config.FieldConfig;
 import com.sgerrand.paymentcardutil.config.FieldProcessors;
+import com.sgerrand.paymentcardutil.config.PdsSubfield;
 import java.util.Map;
 
 /**
@@ -26,7 +27,7 @@ final class FieldCodecs {
                     FieldProcessors.PAN_PREFIX,
                     NO_EXTRAS,
                     FieldProcessors.PDS,
-                    (bit, raw, text, field) -> PdsCodec.unpack(text),
+                    pds(Map.of()),
                     FieldProcessors.DE43,
                     (bit, raw, text, field) -> De43Codec.unpack(text, field.processorConfig()),
                     FieldProcessors.ICC,
@@ -45,6 +46,18 @@ final class FieldCodecs {
             return NO_EXTRAS;
         }
         return BUILT_IN.getOrDefault(processor, NO_EXTRAS);
+    }
+
+    /**
+     * The private data codec, splitting the subelements the layout asks for.
+     *
+     * <p>Every other built in codec gets all it needs from the element's own {@link FieldConfig}.
+     * This one also needs the layout's {@link
+     * com.sgerrand.paymentcardutil.config.IsoConfig#pdsSubfields()}, which belong to no one
+     * element, so {@link Iso8583Options#codec} builds it from the layout in use.
+     */
+    static FieldCodec pds(Map<String, Map<String, PdsSubfield>> subfields) {
+        return (bit, raw, text, field) -> PdsCodec.unpack(text, subfields);
     }
 
     /** Chip data, which is binary and so keeps its bytes as the field's value. */

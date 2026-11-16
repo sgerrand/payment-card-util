@@ -95,6 +95,15 @@ DE43 = 'BIG SHOP           \\123 FAKE ST        \\SYDNEY             \\2000     
 # DE55 chip data: 9F02 (amount), 5F2A (currency), 82 (AIP), then low values.
 ICC_HEX = '9f0206000000001000' '5f2a020036' '820200' '00'
 
+# PDS 0105, the file id a header or trailer record carries: 3 char file type,
+# 6 char reference date, 11 char processor id, 5 char sequence number. The
+# default config splits it into PDS0105_SF1 to PDS0105_SF4.
+FILE_ID = '002' '261116' '01234567890' '00001'
+
+# PDS 0001, an account number type and a published test card number, padded to
+# 19. The default config splits it into PDS0001_SF1 and PDS0001_SF2.
+PDS0001 = 'MC' '5555555555554444   '
+
 ISO_CASES = [
     iso_case('simple', {'MTI': '1144', 'DE2': '4444555566667777'}),
     iso_case('simple cp500', {'MTI': '1144', 'DE2': '4444555566667777'}, encoding='cp500'),
@@ -127,6 +136,18 @@ ISO_CASES = [
     iso_case('pds fields cp500', {
         'MTI': '1240', 'PDS0023': 'PDS23VALUE', 'PDS0158': '0000000000',
     }, encoding='cp500'),
+    iso_case('pds subfields', {
+        'MTI': '1644', 'DE24': '697', 'DE71': 1, 'PDS0105': FILE_ID,
+    }),
+    # Too short for the processor id and sequence number: cardutil leaves out
+    # a part that runs past the end rather than cutting it short.
+    iso_case('pds subfields cut short', {
+        'MTI': '1644', 'DE24': '697', 'PDS0105': FILE_ID[:10],
+    }),
+    iso_case('pds subfields beside other pds', {
+        'MTI': '1240', 'DE2': '5555555555554444', 'PDS0001': PDS0001,
+        'PDS0023': 'PDS23VALUE', 'PDS0158': '0000000000',
+    }),
     iso_case('icc data', {
         'MTI': '1240', 'DE2': '4444555566667777', 'DE55': binascii.unhexlify(ICC_HEX),
     }),
@@ -152,6 +173,13 @@ IPM_CASES = [
         {'MTI': '1240', 'DE2': '5555444433332222', 'DE4': 99},
         {'MTI': '1644', 'DE2': '4444555566667777', 'PDS0158': '0000000000'},
     ]),
+    # The shape of a real clearing file: a header and a trailer, each with its
+    # file id in PDS 0105, around the messages.
+    ipm_case('header and trailer', [
+        {'MTI': '1644', 'DE24': '697', 'DE71': 1, 'PDS0105': FILE_ID},
+        {'MTI': '1240', 'DE2': '4444555566667777', 'DE4': 100, 'DE71': 2},
+        {'MTI': '1644', 'DE24': '695', 'DE71': 3, 'PDS0105': FILE_ID, 'PDS0306': '00000001'},
+    ], blocked=True),
     ipm_case('blocked', [
         {'MTI': '1144', 'DE2': '4444555566667777'},
         {'MTI': '1240', 'DE2': '5555444433332222', 'DE4': 99},

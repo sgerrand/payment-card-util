@@ -20,6 +20,45 @@ PROCESSOR = {None: 'null', 'PDS': 'FieldProcessors.PDS', 'DE43': 'FieldProcessor
              'PAN-PREFIX': 'FieldProcessors.PAN_PREFIX'}
 
 
+# Every key this generator knows what to do with, at each level of the config.
+# Anything else stops the run. A key nobody handles is a cardutil feature this
+# port does not have yet, and dropping it quietly is how a release that changes
+# behaviour comes to look like a version bump.
+KNOWN_KEYS = {
+    'config': {'MAX_VBS_RECORD_LENGTH', 'bit_config', 'output_data_elements',
+               'mci_parameter_tables', 'PDS'},
+    'bit_config field': {'field_name', 'field_type', 'field_length', 'field_python_type',
+                         'field_date_format', 'field_processor', 'field_processor_config'},
+    'PDS entry': {'subfields'},
+    'PDS subfield': {'field_start', 'field_length', 'field_name', 'field_python_type'},
+    'parameter table field': {'start', 'end'},
+}
+
+# cardutil converts a subfield for these two and leaves anything else as text,
+# 'long' and 'datetime' included. See PdsSubfield.valueTypeFor.
+SUBFIELD_VALUE_TYPE = {'int': 'ValueType.LONG', 'decimal': 'ValueType.DECIMAL'}
+
+
+def check_keys(kind, mapping, where):
+    unknown = sorted(set(mapping) - KNOWN_KEYS[kind])
+    if unknown:
+        sys.exit(f'{where} has keys this generator does not handle: {", ".join(unknown)}. '
+                 f'cardutil {VERSION} has added to its config, so the port needs to learn '
+                 f'what they do before regenerating.')
+
+
+check_keys('config', config, 'the cardutil config')
+for bit, field in config['bit_config'].items():
+    check_keys('bit_config field', field, f'bit_config {bit}')
+for pds_tag, entry in config.get('PDS', {}).items():
+    check_keys('PDS entry', entry, f'PDS {pds_tag}')
+    for number, part in entry.get('subfields', {}).items():
+        check_keys('PDS subfield', part, f'PDS {pds_tag} subfield {number}')
+for table_id, fields in config['mci_parameter_tables'].items():
+    for name, position in fields.items():
+        check_keys('parameter table field', position, f'parameter table {table_id} {name}')
+
+
 def jstr(value):
     """Python string -> Java string literal. JSON escaping is a subset of Java's."""
     if value is None:
@@ -55,6 +94,7 @@ w(f'                .maxVbsRecordLength({config.get("MAX_VBS_RECORD_LENGTH", 600
 w('                .bitConfig(bitConfig())')
 w('                .outputDataElements(outputDataElements())')
 w('                .parameterTables(parameterTables())')
+w('                .pdsSubfields(pdsSubfields())')
 w('                .build();')
 w('    }')
 w('')
@@ -94,6 +134,25 @@ for table_id in config['mci_parameter_tables']:
 w('        return tables;')
 w('    }')
 
+w('')
+w('    private static Map<String, Map<String, PdsSubfield>> pdsSubfields() {')
+w('        Map<String, Map<String, PdsSubfield>> subfields = new LinkedHashMap<>();')
+for pds_tag, entry in config.get('PDS', {}).items():
+    if not entry.get('subfields'):
+        continue
+    w(f'        Map<String, PdsSubfield> pds{pds_tag} = new LinkedHashMap<>();')
+    for number, part in entry['subfields'].items():
+        args = ', '.join([
+            jstr(part.get('field_name', '')),
+            str(part.get('field_start', 0)),
+            str(part.get('field_length', 0)),
+            SUBFIELD_VALUE_TYPE.get(part.get('field_python_type', 'string'), 'ValueType.TEXT'),
+        ])
+        w(f'        pds{pds_tag}.put({jstr(number)}, new PdsSubfield({args}));')
+    w(f'        subfields.put({jstr(pds_tag)}, pds{pds_tag});')
+w('        return subfields;')
+w('    }')
+
 for table_id, fields in config['mci_parameter_tables'].items():
     w('')
     w(f'    private static ParamTable table{table_id}() {{')
@@ -110,4 +169,5 @@ with open(OUT, 'w') as f:
 
 print(f'wrote {OUT}: {len(lines)} lines, {len(config["bit_config"])} data elements, '
       f'{len(config["output_data_elements"])} csv columns, '
+      f'{len(config.get("PDS", {}))} split private data subelements, '
       f'{len(config["mci_parameter_tables"])} parameter tables')

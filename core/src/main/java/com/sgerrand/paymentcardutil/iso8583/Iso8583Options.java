@@ -1,5 +1,6 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
+import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -94,6 +95,14 @@ public record Iso8583Options(
             return FieldCodecs.NO_EXTRAS;
         }
         FieldCodec codec = codecs.get(processor);
-        return codec != null ? codec : FieldCodecs.of(processor);
+        if (codec != null) {
+            return codec;
+        }
+        // Which subelements to split is part of the layout, so the private
+        // data codec is the one built in codec that has to be given it.
+        if (FieldProcessors.PDS.equals(processor) && !config.pdsSubfields().isEmpty()) {
+            return FieldCodecs.pds(config.pdsSubfields());
+        }
+        return FieldCodecs.of(processor);
     }
 }

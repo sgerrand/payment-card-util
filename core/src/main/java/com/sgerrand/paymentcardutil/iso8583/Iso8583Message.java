@@ -20,6 +20,7 @@ import java.util.TreeSet;
  *   <li>{@code MTI} - the message type indicator
  *   <li>{@code DE1} to {@code DE127} - data elements
  *   <li>{@code PDSxxxx} - Mastercard private data subelements
+ *   <li>{@code PDSxxxx_SFn} - fixed position parts of a subelement, such as {@code PDS0105_SF1}
  *   <li>{@code TAGxxxx} and {@code ICC_DATA} - chip data from DE 55
  *   <li>{@code DE43_NAME}, {@code DE43_SUBURB} and friends - parts of DE 43
  * </ul>
@@ -227,6 +228,20 @@ public final class Iso8583Message {
     }
 
     /**
+     * A part of a Mastercard private data subelement, as text.
+     *
+     * <p>Only subelements the layout splits have parts; see {@link
+     * com.sgerrand.paymentcardutil.config.IsoConfig#pdsSubfields()}. Parts are read only: writing
+     * the message writes the subelement itself, not these.
+     *
+     * @param tag the PDS tag, such as 105
+     * @param subfield the subfield number, such as {@code "1"}
+     */
+    public Optional<String> pdsSubfield(int tag, String subfield) {
+        return text(pdsSubfieldKey(tag, subfield));
+    }
+
+    /**
      * An ICC tag read out of DE 55, as hex.
      *
      * @param tag the tag in hex, such as {@code 9F02}; case does not matter
@@ -268,6 +283,13 @@ public final class Iso8583Message {
             throw new IllegalArgumentException("PDS tag out of range: " + tag);
         }
         return "PDS%04d".formatted(tag);
+    }
+
+    /** The key holding a part of a private data subelement, such as {@code PDS0105_SF1}. */
+    public static String pdsSubfieldKey(int tag, String subfield) {
+        return pdsKey(tag)
+                + PdsCodec.SUBFIELD_MARKER
+                + Objects.requireNonNull(subfield, "subfield");
     }
 
     private static long parseLong(int de, String text) {

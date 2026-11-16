@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
+import com.sgerrand.paymentcardutil.config.PdsSubfield;
+import com.sgerrand.paymentcardutil.config.ValueType;
 import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -97,11 +99,41 @@ class ConfigFilesTest {
     }
 
     @Test
+    void namingOneSplitSubelementLeavesTheRestAlone() throws IOException {
+        IsoConfig config =
+                parse(
+                        """
+                        {"PDS": {"0158": {"subfields": {
+                            "1": {"field_name": "Count", "field_start": 0, "field_length": 4,
+                                  "field_python_type": "int"},
+                            "2": {"field_name": "Code", "field_start": 4, "field_length": 2}}}}}
+                        """);
+
+        assertEquals(
+                new PdsSubfield("Count", 0, 4, ValueType.LONG),
+                config.pdsSubfields("0158").get("1"));
+        assertEquals(PdsSubfield.of("Code", 4, 2), config.pdsSubfields("0158").get("2"));
+        assertEquals(
+                IsoConfig.defaults().pdsSubfields("0105"),
+                config.pdsSubfields("0105"),
+                "a subelement the file did not name is untouched");
+    }
+
+    @Test
+    void emptySubfieldsStopASubelementBeingSplit() throws IOException {
+        IsoConfig config = parse("{\"PDS\": {\"0001\": {\"subfields\": {}}}}");
+
+        assertTrue(config.pdsSubfields("0001").isEmpty());
+        assertEquals(IsoConfig.defaults().pdsSubfields("0105"), config.pdsSubfields("0105"));
+    }
+
+    @Test
     void anEmptyConfigChangesNothing() throws IOException {
         IsoConfig config = parse("{}");
 
         assertEquals(IsoConfig.defaults().bitConfig(), config.bitConfig());
         assertEquals(IsoConfig.defaults().outputDataElements(), config.outputDataElements());
         assertEquals(IsoConfig.defaults().maxVbsRecordLength(), config.maxVbsRecordLength());
+        assertEquals(IsoConfig.defaults().pdsSubfields(), config.pdsSubfields());
     }
 }

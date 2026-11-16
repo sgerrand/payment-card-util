@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 A Java port of the Python [cardutil](https://github.com/adelosa/cardutil) package
-(MIT, by Anthony Delosa), pinned to cardutil **0.7.3**. Payment card work: ISO
+(MIT, by Anthony Delosa), pinned to cardutil **0.7.4**. Payment card work: ISO
 8583 messages, Mastercard IPM clearing and parameter files, card numbers, pin
 blocks, key handling.
 
@@ -38,7 +38,7 @@ Adding `-am` rebuilds `core` too, which then needs
 
 This is the single most important thing about this repository.
 
-`core/src/test/resources/vectors/cardutil.json` holds 56 cases — messages, files,
+`core/src/test/resources/vectors/cardutil.json` holds 60 cases — messages, files,
 pin blocks, keys, parameter tables, hex dumps — each produced by **running the
 Python package**. The parity tests (`*ParityTest`, `@TestFactory` over the vectors)
 replay them and compare byte for byte.
@@ -63,9 +63,14 @@ python -m venv .venv && .venv/bin/pip install 'cardutil[crypto]'
 .venv/bin/python tools/gen_vectors.py core/src/test/resources/vectors/cardutil.json
 ```
 
-Both generators are reproducible: run against 0.7.3 they produce no diff. The
+Both generators are reproducible: run against 0.7.4 they produce no diff. The
 `cardutil drift` workflow relies on that, running weekly to regenerate against the
 newest cardutil and fail if anything moved.
+
+Passing tests after a drift prove only that the existing cases still match; a
+new cardutil feature that no vector uses passes too. So `gen_config.py` stops on
+any config key it does not know, and anything new needs cases in
+`gen_vectors.py`.
 
 That covers the generated files only. The command line is hand written, so the
 same workflow runs `tools/check_cli_options.py`, which reads cardutil's argument
@@ -105,7 +110,10 @@ CSV column list in the config refers to those keys.
 up.** A field's processor is a name — a plain string, as in a cardutil config
 file — and `Iso8583.readField` asks `Iso8583Options.codec` for the `FieldCodec`
 of that name rather than testing the processor itself:
-`PDS` breaks a field into `PDSxxxx` entries (`PdsCodec`), `ICC` into `TAGxxxx`
+`PDS` breaks a field into `PDSxxxx` entries (`PdsCodec`), and splits the ones
+`IsoConfig.pdsSubfields` names into fixed position parts keyed `PDSxxxx_SFn` —
+the one built in codec that needs more than its own `FieldConfig`, so
+`Iso8583Options.codec` builds it from the layout, `ICC` into `TAGxxxx`
 (`IccCodec`), `DE43` into named parts via a regex (`De43Codec`), `PAN` and
 `PAN-PREFIX` only mark a card number. Those extra keys sit alongside the `DEn`
 value in the same map. A codec that says `readsRawBytes` keeps the field's bytes
@@ -155,12 +163,16 @@ These caused real bugs or would have. Do not "simplify" them.
 - **Packing private data overwrites data elements.** `PDSxxxx` values are packed
   into DE 48, 62, 123, 124, 125 in order, replacing anything already there. A
   message holding both is not round trip safe — this matches cardutil.
+- **Subfield keys are read only.** `PDS0105_SF1` and the like sit beside
+  `PDS0105`, and `PdsCodec.pack` skips them. cardutil 0.7.4 tries to pack them
+  and crashes on any message it read with one; that is a README divergence,
+  not something to match.
 - **`mci-ipm-encode` strips PDS processing** from the config before copying, so
   private data is carried across exactly as read rather than unpacked and rebuilt.
 
 ## Deliberate divergences from cardutil
 
-Eight, each listed in the README with its reason. Do not close them in the name
+Ten, each listed in the README with its reason. Do not close them in the name
 of parity without checking there first — each exists because cardutil's behaviour
 is wrong or unsafe. The one most likely to surprise: `mci-ipm-to-csv` masks card
 numbers unless `--unmask-pan` is passed, while the library itself never masks —

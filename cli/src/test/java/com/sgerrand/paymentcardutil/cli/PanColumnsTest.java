@@ -6,8 +6,10 @@ import com.sgerrand.paymentcardutil.config.FieldConfig;
 import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.FieldType;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
+import com.sgerrand.paymentcardutil.config.PdsSubfield;
 import com.sgerrand.paymentcardutil.config.ValueType;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -29,7 +31,7 @@ class PanColumnsTest {
                         .field(2, field("Primary Account Number", FieldProcessors.PAN))
                         .build();
 
-        assertEquals(List.of("DE2"), IpmToCsv.panColumns(config));
+        assertEquals(List.of("DE2", "PDS0001_SF2"), IpmToCsv.panColumns(config));
     }
 
     @Test
@@ -39,7 +41,7 @@ class PanColumnsTest {
                         .field(2, field("Numero de carte", FieldProcessors.PAN_PREFIX))
                         .build();
 
-        assertEquals(List.of("DE2"), IpmToCsv.panColumns(config));
+        assertEquals(List.of("DE2", "PDS0001_SF2"), IpmToCsv.panColumns(config));
     }
 
     @Test
@@ -51,14 +53,30 @@ class PanColumnsTest {
                         .field(35, field("Track 2 data", null))
                         .build();
 
-        assertEquals(List.of("DE2", "DE34"), IpmToCsv.panColumns(config));
+        assertEquals(List.of("DE2", "DE34", "PDS0001_SF2"), IpmToCsv.panColumns(config));
     }
 
     @Test
     void anElementNamedPanIsMaskedWithNoProcessorToGoOn() {
         // What the built-in Mastercard layout does: it comes from cardutil's
         // config, and cardutil marks no element, since it does not mask.
-        assertEquals(List.of("DE2"), IpmToCsv.panColumns(IsoConfig.defaults()));
+        // PDS 0001 holds a card number too, in a part cardutil calls the
+        // account number.
+        assertEquals(List.of("DE2", "PDS0001_SF2"), IpmToCsv.panColumns(IsoConfig.defaults()));
+    }
+
+    @Test
+    void aSubfieldIsMaskedByItsName() {
+        IsoConfig config =
+                IsoConfig.builder()
+                        .pdsSubfields(
+                                "0158",
+                                Map.of(
+                                        "1", PdsSubfield.of("pan", 0, 16),
+                                        "2", PdsSubfield.of("Account number type", 16, 2)))
+                        .build();
+
+        assertEquals(List.of("PDS0158_SF1"), IpmToCsv.panColumns(config));
     }
 
     @Test
@@ -70,6 +88,6 @@ class PanColumnsTest {
 
         // DE34 is marked outright; DE2 is still called PAN in the built-in
         // layout. Marking one element must not unmask the other.
-        assertEquals(List.of("DE2", "DE34"), IpmToCsv.panColumns(config));
+        assertEquals(List.of("DE2", "DE34", "PDS0001_SF2"), IpmToCsv.panColumns(config));
     }
 }

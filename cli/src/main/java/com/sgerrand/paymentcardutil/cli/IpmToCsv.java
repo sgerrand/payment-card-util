@@ -34,6 +34,12 @@ final class IpmToCsv implements Callable<Integer>, FileCommand {
     /** The element name that also marks a card number. See {@link #panColumns(IsoConfig)}. */
     private static final String PAN_FIELD_NAME = "PAN";
 
+    /**
+     * The private data subfield names that mark a card number. See {@link #panColumns(IsoConfig)}.
+     */
+    private static final List<String> PAN_SUBFIELD_NAMES =
+            List.of(PAN_FIELD_NAME, "Account Number");
+
     @Parameters(index = "0", paramLabel = "IPM_FILE", description = "The IPM file to read.")
     Path inFile;
 
@@ -91,6 +97,10 @@ final class IpmToCsv implements Callable<Integer>, FileCommand {
      * mask, so going by the processor alone would quietly write full card numbers. Going by the
      * name alone misses an element a layout marks outright. Taking either means a column has to
      * shake off both to come out unmasked.
+     *
+     * <p>Parts of private data subelements have no processor, only a name, so the name is all there
+     * is to go on. cardutil's built in layout calls the card number inside PDS 0001 {@code Account
+     * Number}, so that counts as well as {@code PAN}.
      */
     static List<String> panColumns(IsoConfig config) {
         List<String> columns = new ArrayList<>();
@@ -106,6 +116,16 @@ final class IpmToCsv implements Callable<Integer>, FileCommand {
                                 columns.add(Iso8583Message.deKey(bit));
                             }
                         });
+        config.pdsSubfields()
+                .forEach(
+                        (tag, parts) ->
+                                parts.forEach(
+                                        (number, part) -> {
+                                            if (PAN_SUBFIELD_NAMES.stream()
+                                                    .anyMatch(part.name()::equalsIgnoreCase)) {
+                                                columns.add("PDS" + tag + "_SF" + number);
+                                            }
+                                        }));
         return columns;
     }
 
