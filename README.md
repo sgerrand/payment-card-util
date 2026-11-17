@@ -296,7 +296,9 @@ and tests that never ran. Read the log before regenerating anything.
 
 It also only holds for a new release. If the newest cardutil is still the one
 the committed files came from, nothing has shipped, and whatever failed will
-fail on pull requests too.
+fail on pull requests too. If the run does not say which cardutil it installed,
+or which one the committed files came from, there is no telling which it was,
+so do not regenerate and commit on the strength of it.
 
 When the files move, the run keeps them as an artifact, so the new output can be
 read without installing anything. A run that was cancelled may not have lasted
