@@ -123,6 +123,57 @@ class IpmToolsTest {
                 "--unmask-pan writes it in full");
     }
 
+    @Test
+    void aCardNumberSubfieldReadAsANumberIsMasked() throws IOException {
+        // A layout that reads a card number out of private data as an int
+        // hands the CSV a Long, not text. It must be masked all the same.
+        Path withNumber = directory.resolve("numeric-pan.ipm");
+        try (OutputStream out = Files.newOutputStream(withNumber);
+                IpmWriter writer = IpmWriter.blocked(out)) {
+            writer.write(Iso8583Message.builder().mti("1240").pds(158, "5555555555554444").build());
+        }
+        Path config = directory.resolve("numeric-pan.json");
+        Files.writeString(
+                config,
+                """
+                {
+                  "PDS": {"0158": {"subfields": {"1": {
+                    "field_name": "PAN", "field_start": 0, "field_length": 16,
+                    "field_python_type": "int"}}}},
+                  "output_data_elements": ["MTI", "PDS0158_SF1"]
+                }
+                """);
+        Path masked = directory.resolve("numeric-pan-masked.csv");
+        Path plain = directory.resolve("numeric-pan-plain.csv");
+
+        assertEquals(
+                0,
+                run(
+                        "mci-ipm-to-csv",
+                        withNumber.toString(),
+                        "-o",
+                        masked.toString(),
+                        "--config-file",
+                        config.toString()));
+        assertEquals(
+                0,
+                run(
+                        "mci-ipm-to-csv",
+                        withNumber.toString(),
+                        "-o",
+                        plain.toString(),
+                        "--unmask-pan",
+                        "--config-file",
+                        config.toString()));
+
+        String maskedText = Files.readString(masked);
+        assertTrue(maskedText.contains("1240,555555******4444"), maskedText);
+        assertFalse(maskedText.contains("5555555555554444"), "the full number must not be written");
+        assertTrue(
+                Files.readString(plain).contains("1240,5555555555554444"),
+                "--unmask-pan writes it in full");
+    }
+
     /** A layout naming the card number something else and marking it by processor. */
     private Path writeConfigMarkingTheCardNumber() throws IOException {
         Path config = directory.resolve("layout.json");
