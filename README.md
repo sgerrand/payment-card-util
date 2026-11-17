@@ -225,7 +225,10 @@ Everything else matches byte for byte. These do not, and each is deliberate.
   layout marks no element by processor, since it comes from cardutil's own
   config, and a layout that does mark one may still name another. A part of a
   private data subelement counts if it is named `PAN` or `Account Number`, so
-  the card number inside PDS 0001 (`PDS0001_SF2`) is masked too.
+  the `PDS0001_SF2` column is masked too. Only columns that hold nothing but a
+  card number are masked. PDS 0001 is also packed inside DE 48, and the DE 48
+  column is written as it stands, card number included, as it was before
+  PDS 0001 was split. Leave DE 48 out of the columns if that matters.
 - **The `PAN` and `PAN-PREFIX` field processors only mark a field.** cardutil
   masks the value and cuts the prefix short while parsing. That loses what the
   file actually held, so the message cannot be written back unchanged and a
@@ -246,7 +249,16 @@ Everything else matches byte for byte. These do not, and each is deliberate.
   it has just read if that message holds PDS 0105 or PDS 0001. Every real
   clearing file has PDS 0105 in its header, so its `mci-csv-to-ipm` fails on
   the output of its own `mci-ipm-to-csv`. To change a part, change the
-  subelement: a changed part is ignored.
+  subelement: a changed part is ignored. A part with no subelement beside it
+  raises an error rather than being dropped. `mci-csv-to-ipm` leaves part
+  columns out before writing, since the CSV holds the subelement inside its
+  `DE48` column rather than in a column of its own.
+
+  The round trip through CSV still has a gap that cardutil shares. Writing
+  rebuilds DE 48 from the `PDSxxxx` values the row holds, and the CSV only has
+  columns for some of them. A header with PDS 0105 and PDS 0122 comes back with
+  PDS 0122 alone, because the CSV has a `PDS0122` column and no `PDS0105` one.
+  Add the subelements you need to `output_data_elements` to keep them.
 - **A config file's `PDS` section is read.** It says which subelements to split
   and how. cardutil ignores it and always uses its own built in list. Here it
   works like the other sections: name a subelement to change its parts, or give

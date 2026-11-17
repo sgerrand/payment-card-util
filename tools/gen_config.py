@@ -34,9 +34,13 @@ KNOWN_KEYS = {
     'parameter table field': {'start', 'end'},
 }
 
-# cardutil converts a subfield for these two and leaves anything else as text,
-# 'long' and 'datetime' included. See PdsSubfield.valueTypeFor.
-SUBFIELD_VALUE_TYPE = {'int': 'ValueType.LONG', 'decimal': 'ValueType.DECIMAL'}
+# The subfield types cardutil's built in config uses. cardutil converts 'int'
+# and 'decimal' and leaves anything else as text (see PdsSubfield.valueTypeFor),
+# so a new name would still read as text here. It stops the run anyway: a type
+# cardutil starts using is a sign it may have started converting it too, and
+# that is the change no existing vector would catch.
+SUBFIELD_VALUE_TYPE = {'string': 'ValueType.TEXT', 'int': 'ValueType.LONG',
+                       'decimal': 'ValueType.DECIMAL'}
 
 
 def check_keys(kind, mapping, where):
@@ -54,6 +58,11 @@ for pds_tag, entry in config.get('PDS', {}).items():
     check_keys('PDS entry', entry, f'PDS {pds_tag}')
     for number, part in entry.get('subfields', {}).items():
         check_keys('PDS subfield', part, f'PDS {pds_tag} subfield {number}')
+        python_type = part.get('field_python_type', 'string')
+        if python_type not in SUBFIELD_VALUE_TYPE:
+            sys.exit(f'PDS {pds_tag} subfield {number} has field_python_type {python_type!r}, '
+                     f'which this generator does not handle. Check how cardutil {VERSION} '
+                     f'reads it before regenerating.')
 for table_id, fields in config['mci_parameter_tables'].items():
     for name, position in fields.items():
         check_keys('parameter table field', position, f'parameter table {table_id} {name}')
@@ -146,7 +155,7 @@ for pds_tag, entry in config.get('PDS', {}).items():
             jstr(part.get('field_name', '')),
             str(part.get('field_start', 0)),
             str(part.get('field_length', 0)),
-            SUBFIELD_VALUE_TYPE.get(part.get('field_python_type', 'string'), 'ValueType.TEXT'),
+            SUBFIELD_VALUE_TYPE[part.get('field_python_type', 'string')],
         ])
         w(f'        pds{pds_tag}.put({jstr(number)}, new PdsSubfield({args}));')
     w(f'        subfields.put({jstr(pds_tag)}, pds{pds_tag});')

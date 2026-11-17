@@ -1,6 +1,7 @@
 package com.sgerrand.paymentcardutil.cli;
 
 import com.sgerrand.paymentcardutil.config.IsoConfig;
+import com.sgerrand.paymentcardutil.config.PdsSubfield;
 import com.sgerrand.paymentcardutil.ipm.IpmWriter;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
@@ -8,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -52,11 +54,25 @@ final class CsvToIpm implements Callable<Integer>, FileCommand {
         try (OutputStream stream = Files.newOutputStream(out);
                 IpmWriter writer = IpmWriter.open(stream, options, common.blocked())) {
             for (Map<String, String> row : rows) {
-                writer.write(Iso8583Message.of(row));
+                writer.write(Iso8583Message.of(withoutParts(row)));
             }
         }
         System.out.println("Wrote " + rows.size() + " messages to " + out);
         return 0;
+    }
+
+    /**
+     * The row without its private data part columns, such as {@code PDS0105_SF1}.
+     *
+     * <p>Parts are copies of what a subelement held, and only ever read. The CSV holds the parts
+     * but usually not the subelement itself, which stays inside the {@code DE48} column, and the
+     * library refuses a part with no subelement beside it. So they are dropped here, and the
+     * subelement goes back out inside its data element as it came in.
+     */
+    private static Map<String, String> withoutParts(Map<String, String> row) {
+        Map<String, String> kept = new LinkedHashMap<>(row);
+        kept.keySet().removeIf(key -> PdsSubfield.parentKey(key).isPresent());
+        return kept;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.sgerrand.paymentcardutil.config;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * One fixed position part of a Mastercard private data subelement, such as the file type at the
@@ -16,6 +17,9 @@ import java.util.Objects;
  *     ValueType#LONG} or {@link ValueType#DECIMAL}
  */
 public record PdsSubfield(String name, int start, int length, ValueType valueType) {
+
+    /** The text between a subelement's key and its subfield number, as in {@code PDS0105_SF1}. */
+    public static final String KEY_MARKER = "_SF";
 
     public PdsSubfield {
         Objects.requireNonNull(name, "name");
@@ -54,6 +58,45 @@ public record PdsSubfield(String name, int start, int length, ValueType valueTyp
             case "decimal" -> ValueType.DECIMAL;
             default -> ValueType.TEXT;
         };
+    }
+
+    /**
+     * The message key a part is kept under, such as {@code PDS0105_SF1}.
+     *
+     * <p>The one place that builds these keys, so the reader that makes them and anything that
+     * looks for them, such as the CSV masking, cannot drift apart.
+     *
+     * @param tag the four character PDS tag, such as {@code 0105}
+     * @param number the subfield number, such as {@code 1}
+     */
+    public static String key(String tag, String number) {
+        return "PDS"
+                + Objects.requireNonNull(tag, "tag")
+                + KEY_MARKER
+                + Objects.requireNonNull(number, "number");
+    }
+
+    /**
+     * The subelement a part's key belongs to: {@code PDS0105} for {@code PDS0105_SF1}.
+     *
+     * @return the subelement's key, or empty if this is not a part's key. A part's key is {@code
+     *     PDS}, one or more digits, {@value #KEY_MARKER}, then the subfield number.
+     */
+    public static Optional<String> parentKey(String key) {
+        if (!key.startsWith("PDS")) {
+            return Optional.empty();
+        }
+        int marker = key.indexOf(KEY_MARKER, 3);
+        if (marker <= 3) {
+            return Optional.empty();
+        }
+        for (int i = 3; i < marker; i++) {
+            char c = key.charAt(i);
+            if (c < '0' || c > '9') {
+                return Optional.empty();
+            }
+        }
+        return Optional.of(key.substring(0, marker));
     }
 
     /** The character just past the end of this part. */

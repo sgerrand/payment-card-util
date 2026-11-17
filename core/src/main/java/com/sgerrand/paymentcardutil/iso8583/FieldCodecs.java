@@ -8,9 +8,11 @@ import java.util.Map;
 /**
  * The codecs for the field processors cardutil names.
  *
- * <p>This is the only place that knows which name means which codec. The reader itself works from
- * whatever {@link Iso8583Options#codec} hands back, so a caller can put their own codec in place of
- * any of these.
+ * <p>This is where each name is matched to its codec. The private data codec is the one exception:
+ * it needs the layout's subfield list as well as the element's own config, so {@link
+ * Iso8583Options#codec} builds it with {@link #pds} from the layout in use. The reader itself works
+ * from whatever {@link Iso8583Options#codec} hands back, so a caller can put their own codec in
+ * place of any of these.
  */
 final class FieldCodecs {
 
@@ -26,8 +28,6 @@ final class FieldCodecs {
                     NO_EXTRAS,
                     FieldProcessors.PAN_PREFIX,
                     NO_EXTRAS,
-                    FieldProcessors.PDS,
-                    pds(Map.of()),
                     FieldProcessors.DE43,
                     (bit, raw, text, field) -> De43Codec.unpack(text, field.processorConfig()),
                     FieldProcessors.ICC,

@@ -100,7 +100,7 @@ public record Iso8583Options(
         }
         // Which subelements to split is part of the layout, so the private
         // data codec is the one built in codec that has to be given it.
-        if (FieldProcessors.PDS.equals(processor) && !config.pdsSubfields().isEmpty()) {
+        if (FieldProcessors.PDS.equals(processor)) {
             return FieldCodecs.pds(config.pdsSubfields());
         }
         return FieldCodecs.of(processor);

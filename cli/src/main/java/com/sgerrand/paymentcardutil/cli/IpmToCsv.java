@@ -3,11 +3,13 @@ package com.sgerrand.paymentcardutil.cli;
 import com.sgerrand.paymentcardutil.card.Pan;
 import com.sgerrand.paymentcardutil.config.FieldProcessors;
 import com.sgerrand.paymentcardutil.config.IsoConfig;
+import com.sgerrand.paymentcardutil.config.PdsSubfield;
 import com.sgerrand.paymentcardutil.ipm.IpmReader;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Message;
 import com.sgerrand.paymentcardutil.iso8583.Iso8583Options;
 import java.io.BufferedWriter;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -123,13 +125,19 @@ final class IpmToCsv implements Callable<Integer>, FileCommand {
                                         (number, part) -> {
                                             if (PAN_SUBFIELD_NAMES.stream()
                                                     .anyMatch(part.name()::equalsIgnoreCase)) {
-                                                columns.add("PDS" + tag + "_SF" + number);
+                                                columns.add(PdsSubfield.key(tag, number));
                                             }
                                         }));
         return columns;
     }
 
-    private static Map<String, ?> mask(Map<String, Object> values, List<String> columns) {
+    /**
+     * The values with each card number column masked.
+     *
+     * <p>Numbers are masked as well as text. A layout may read a card number as a whole number, and
+     * leaving those alone would write it in full.
+     */
+    static Map<String, ?> mask(Map<String, Object> values, List<String> columns) {
         if (columns.isEmpty()) {
             return values;
         }
@@ -138,6 +146,10 @@ final class IpmToCsv implements Callable<Integer>, FileCommand {
             Object value = masked.get(column);
             if (value instanceof String text) {
                 masked.put(column, Pan.maskDigits(text));
+            } else if (value instanceof BigDecimal decimal) {
+                masked.put(column, Pan.maskDigits(decimal.toPlainString()));
+            } else if (value instanceof Number number) {
+                masked.put(column, Pan.maskDigits(number.toString()));
             }
         }
         return masked;

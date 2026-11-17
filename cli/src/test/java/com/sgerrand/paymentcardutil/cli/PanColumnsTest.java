@@ -80,6 +80,18 @@ class PanColumnsTest {
     }
 
     @Test
+    void aCardNumberReadAsANumberIsMaskedToo() {
+        // A layout may read a card number subfield as an int, which arrives
+        // as a Long. It must not slip past the masking for not being text.
+        Map<String, Object> values = Map.of("PDS0158_SF1", 5555555555554444L, "DE4", 100L);
+
+        Map<String, ?> masked = IpmToCsv.mask(values, List.of("PDS0158_SF1"));
+
+        assertEquals("555555******4444", masked.get("PDS0158_SF1"));
+        assertEquals(100L, masked.get("DE4"));
+    }
+
+    @Test
     void bothSignalsCount() {
         IsoConfig config =
                 IsoConfig.defaults().toBuilder()

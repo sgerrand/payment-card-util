@@ -110,15 +110,17 @@ CSV column list in the config refers to those keys.
 up.** A field's processor is a name — a plain string, as in a cardutil config
 file — and `Iso8583.readField` asks `Iso8583Options.codec` for the `FieldCodec`
 of that name rather than testing the processor itself:
-`PDS` breaks a field into `PDSxxxx` entries (`PdsCodec`), and splits the ones
-`IsoConfig.pdsSubfields` names into fixed position parts keyed `PDSxxxx_SFn` —
-the one built in codec that needs more than its own `FieldConfig`, so
-`Iso8583Options.codec` builds it from the layout, `ICC` into `TAGxxxx`
+`PDS` breaks a field into `PDSxxxx` entries (`PdsCodec`), `ICC` into `TAGxxxx`
 (`IccCodec`), `DE43` into named parts via a regex (`De43Codec`), `PAN` and
 `PAN-PREFIX` only mark a card number. Those extra keys sit alongside the `DEn`
 value in the same map. A codec that says `readsRawBytes` keeps the field's bytes
 as its value instead of text, which is how chip data stays binary; that is
 declared by the codec, not carved into the reader.
+
+The PDS codec also splits the subelements `IsoConfig.pdsSubfields` names into
+fixed position parts, keyed `PDSxxxx_SFn`. It is the one built in codec that
+needs more than its own `FieldConfig`, so `Iso8583Options.codec` builds it from
+the layout.
 
 `FieldProcessors` holds the five names cardutil knows, but the vocabulary is
 open: a config file may name anything, and `Iso8583Options.withCodec` registers a codec
@@ -164,7 +166,8 @@ These caused real bugs or would have. Do not "simplify" them.
   into DE 48, 62, 123, 124, 125 in order, replacing anything already there. A
   message holding both is not round trip safe — this matches cardutil.
 - **Subfield keys are read only.** `PDS0105_SF1` and the like sit beside
-  `PDS0105`, and `PdsCodec.pack` skips them. cardutil 0.7.4 tries to pack them
+  `PDS0105`, and `PdsCodec.pack` skips them, failing on one whose subelement is
+  missing rather than dropping it. cardutil 0.7.4 tries to pack them
   and crashes on any message it read with one; that is a README divergence,
   not something to match.
 - **`mci-ipm-encode` strips PDS processing** from the config before copying, so

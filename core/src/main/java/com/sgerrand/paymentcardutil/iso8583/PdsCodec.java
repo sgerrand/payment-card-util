@@ -2,10 +2,12 @@ package com.sgerrand.paymentcardutil.iso8583;
 
 import com.sgerrand.paymentcardutil.config.PdsSubfield;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 
 /**
@@ -29,20 +31,6 @@ final class PdsCodec {
     static final int MAX_GROUP_LENGTH = 999;
 
     private PdsCodec() {}
-
-    /** The text between a subelement's key and its subfield number, as in {@code PDS0105_SF1}. */
-    static final String SUBFIELD_MARKER = "_SF";
-
-    /**
-     * Reads the subelements packed into one data element, splitting none of them.
-     *
-     * @param fieldData the data element's text
-     * @return subelement values keyed {@code PDSxxxx}, in the order they appeared
-     * @throws Iso8583Exception if a tag or length is cut short or is not a number
-     */
-    static Map<String, Object> unpack(String fieldData) {
-        return unpack(fieldData, Map.of());
-    }
 
     /**
      * Reads the subelements packed into one data element, and the parts of any the layout splits.
@@ -111,14 +99,14 @@ final class PdsCodec {
                 continue;
             }
             String text = data.substring(part.start(), part.end());
-            values.put("PDS" + tag + SUBFIELD_MARKER + entry.getKey(), subfieldValue(text, part));
+            values.put(PdsSubfield.key(tag, entry.getKey()), subfieldValue(text, part));
         }
     }
 
     private static Object subfieldValue(String text, PdsSubfield part) {
         try {
             return switch (part.valueType()) {
-                case LONG -> Long.parseLong(text.trim());
+                case LONG -> wholeNumber(text.trim());
                 case DECIMAL -> new BigDecimal(text.trim());
                 case TEXT, DATETIME -> text;
             };
@@ -130,25 +118,57 @@ final class PdsCodec {
     }
 
     /**
+     * A whole number of any size, as Python's {@code int} reads one: a {@link Long} when it fits, a
+     * {@link BigInteger} when it does not.
+     */
+    private static Number wholeNumber(String text) {
+        try {
+            return Long.parseLong(text);
+        } catch (NumberFormatException e) {
+            // Either not a number, which BigInteger rejects too, or one with
+            // more digits than a long holds.
+            return new BigInteger(text);
+        }
+    }
+
+    /**
      * Packs every {@code PDSxxxx} value in a message into groups, each short enough to fit one data
      * element.
      *
      * <p>Tags are packed in ascending order. A group is closed off once adding the next subelement
      * would take it past {@value #MAX_GROUP_LENGTH} characters.
      *
-     * <p>Subfield keys such as {@code PDS0105_SF1} are skipped. They are parts read out of a
-     * subelement that is itself in the message, so the subelement is what gets written. cardutil
-     * 0.7.4 tries to pack them as subelements too, and fails on every message it read with one, so
-     * it cannot write back a file it has just read.
+     * <p>Subfield keys such as {@code PDS0105_SF1} are skipped when the message also holds the
+     * subelement they were read from, which is what gets written. cardutil 0.7.4 tries to pack them
+     * as subelements too, and fails on every message it read with one, so it cannot write back a
+     * file it has just read.
      *
      * @return one string per data element needed, or an empty list if the message has no PDS values
+     * @throws Iso8583Exception if the message holds a subfield key without its subelement, since
+     *     the part would otherwise be lost without a word
      */
     static List<String> pack(Map<String, Object> messageValues) {
         Map<String, Object> pdsValues = new TreeMap<>();
         messageValues.forEach(
                 (key, value) -> {
-                    if (key.startsWith("PDS") && !isSubfieldKey(key)) {
+                    if (!key.startsWith("PDS")) {
+                        return;
+                    }
+                    Optional<String> parentKey = PdsSubfield.parentKey(key);
+                    if (parentKey.isEmpty()) {
                         pdsValues.put(key, value);
+                        return;
+                    }
+                    String parent = parentKey.get();
+                    if (!messageValues.containsKey(parent)) {
+                        throw new Iso8583Exception(
+                                key
+                                        + " is a part of "
+                                        + parent
+                                        + ", which the message does not hold. Parts are only"
+                                        + " read, never written: set "
+                                        + parent
+                                        + " itself.");
                     }
                 });
         if (pdsValues.isEmpty()) {
@@ -184,24 +204,6 @@ final class PdsCodec {
             groups.add(group.toString());
         }
         return groups;
-    }
-
-    /**
-     * Whether a key names a part of a subelement, such as {@code PDS0105_SF1}: {@code PDS}, one or
-     * more digits, then {@value #SUBFIELD_MARKER}.
-     */
-    static boolean isSubfieldKey(String key) {
-        int marker = key.indexOf(SUBFIELD_MARKER, 3);
-        if (marker <= 3) {
-            return false;
-        }
-        for (int i = 3; i < marker; i++) {
-            char c = key.charAt(i);
-            if (c < '0' || c > '9') {
-                return false;
-            }
-        }
-        return true;
     }
 
     private static int parseTag(String key) {

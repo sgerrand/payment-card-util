@@ -1,5 +1,6 @@
 package com.sgerrand.paymentcardutil.iso8583;
 
+import com.sgerrand.paymentcardutil.config.PdsSubfield;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -279,17 +280,19 @@ public final class Iso8583Message {
 
     /** The key holding a private data subelement, such as {@code PDS0158}. */
     public static String pdsKey(int tag) {
+        return "PDS%04d".formatted(checkedPdsTag(tag));
+    }
+
+    private static int checkedPdsTag(int tag) {
         if (tag < 0 || tag > 9999) {
             throw new IllegalArgumentException("PDS tag out of range: " + tag);
         }
-        return "PDS%04d".formatted(tag);
+        return tag;
     }
 
     /** The key holding a part of a private data subelement, such as {@code PDS0105_SF1}. */
     public static String pdsSubfieldKey(int tag, String subfield) {
-        return pdsKey(tag)
-                + PdsCodec.SUBFIELD_MARKER
-                + Objects.requireNonNull(subfield, "subfield");
+        return PdsSubfield.key("%04d".formatted(checkedPdsTag(tag)), subfield);
     }
 
     private static long parseLong(int de, String text) {

@@ -10,6 +10,7 @@ import com.sgerrand.paymentcardutil.config.IsoConfig;
 import com.sgerrand.paymentcardutil.config.PdsSubfield;
 import com.sgerrand.paymentcardutil.config.ValueType;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -63,6 +64,44 @@ class PdsSubfieldTest {
 
         assertEquals(
                 Optional.of("002"), Iso8583.parse(Iso8583.serialize(edited)).pdsSubfield(105, "1"));
+    }
+
+    @Test
+    void aPartWithoutItsSubelementIsAnError() {
+        // Parts are never written, so writing one on its own would drop it
+        // without a word. Before parts existed this failed as a bad PDS key.
+        Iso8583Message partOnly =
+                Iso8583Message.builder()
+                        .mti("1644")
+                        .de(24, "697")
+                        .put(Iso8583Message.pdsSubfieldKey(105, "1"), "002")
+                        .build();
+
+        Iso8583Exception thrown =
+                assertThrows(Iso8583Exception.class, () -> Iso8583.serialize(partOnly));
+        assertTrue(thrown.getMessage().contains("PDS0105_SF1"), thrown.getMessage());
+    }
+
+    @Test
+    void aWholeNumberTooBigForALongIsStillReadAsOne() {
+        // Python's int has no upper limit, so cardutil reads 19 nines as a
+        // number. A long stops at 9223372036854775807.
+        Map<String, PdsSubfield> parts = Map.of("1", new PdsSubfield("Big", 0, 19, ValueType.LONG));
+        IsoConfig config = IsoConfig.defaults().toBuilder().pdsSubfields("0158", parts).build();
+        Iso8583Options options = Iso8583Options.defaults().withConfig(config);
+
+        Iso8583Message parsed =
+                roundTrip(
+                        Iso8583Message.builder().mti("1240").pds(158, "9".repeat(19)).build(),
+                        options);
+
+        assertEquals(Optional.of(new BigInteger("9".repeat(19))), parsed.value("PDS0158_SF1"));
+    }
+
+    @Test
+    void theKeyIsBuiltInOnePlace() {
+        assertEquals("PDS0105_SF1", PdsSubfield.key("0105", "1"));
+        assertEquals("PDS0105_SF1", Iso8583Message.pdsSubfieldKey(105, "1"));
     }
 
     @Test
@@ -125,11 +164,12 @@ class PdsSubfieldTest {
 
     @Test
     void onlyPartKeysAreSkippedWhenPacking() {
-        assertTrue(PdsCodec.isSubfieldKey("PDS0105_SF1"));
-        assertTrue(PdsCodec.isSubfieldKey("PDS0105_SFX"));
-        assertFalse(PdsCodec.isSubfieldKey("PDS0105"));
-        assertFalse(PdsCodec.isSubfieldKey("PDS_SF1"));
-        assertFalse(PdsCodec.isSubfieldKey("PDSAB_SF1"));
+        assertEquals(Optional.of("PDS0105"), PdsSubfield.parentKey("PDS0105_SF1"));
+        assertEquals(Optional.of("PDS0105"), PdsSubfield.parentKey("PDS0105_SFX"));
+        assertEquals(Optional.empty(), PdsSubfield.parentKey("PDS0105"));
+        assertEquals(Optional.empty(), PdsSubfield.parentKey("PDS_SF1"));
+        assertEquals(Optional.empty(), PdsSubfield.parentKey("PDSAB_SF1"));
+        assertEquals(Optional.empty(), PdsSubfield.parentKey("DE43_SF1"));
     }
 
     @Test
