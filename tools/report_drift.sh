@@ -167,8 +167,11 @@ else
   esac
 
   # Tests that fail against files that still match fail for pull
-  # requests too, whatever else the new release moved.
-  if [ "$release" = new ] && [ "$TESTS/$GENERATED" != failure/success ]; then
+  # requests too, whatever else the new release moved. So may a command
+  # line check that fell over before comparing: the jar not building or
+  # the script breaking says nothing about which release is to blame.
+  if [ "$release" = new ] && [ "$TESTS/$GENERATED" != failure/success ] \
+      && [ "$cli" != unfinished ]; then
     if [ "$GENERATED" = failure ] || [ "$cli" = differs ]; then
       pull_requests_safe=true
     fi

@@ -251,9 +251,14 @@ class Description(unittest.TestCase):
         self.assertIn('The command line differs', text)
 
     def test_a_command_line_check_that_never_compared_says_nothing_about_options(self):
-        text = self.describe(CLI_OPTIONS='failure', CLI_COMPARED='')
-        self.assertIn('failed before it had compared anything', text)
-        self.assertNotIn('The command line differs', text)
+        # Nor about pull requests: the jar not building, or the script
+        # falling over, may fail them too.
+        for tests in ('success', 'failure'):
+            with self.subTest(tests=tests):
+                text = self.describe(TESTS=tests, CLI_OPTIONS='failure', CLI_COMPARED='')
+                self.assertIn('failed before it had compared anything', text)
+                self.assertNotIn('The command line differs', text)
+                self.assertNotIn('Pull requests are unaffected', text)
 
     def test_moved_files_and_a_differing_option_get_a_paragraph_each(self):
         text = self.describe(CLI_OPTIONS='failure')
@@ -437,6 +442,7 @@ class EveryMix(unittest.TestCase):
                     self.assertNotEqual((mix['TESTS'], mix['GENERATED']), ('failure', 'success'))
                     for check in ('TESTS', 'GENERATED', 'CLI_OPTIONS'):
                         self.assertIn(mix[check], ('success', 'failure'))
+                    self.assertFalse(mix['CLI_OPTIONS'] == 'failure' and mix['CLI_COMPARED'] != 'true')
 
     def test_a_differing_option_is_never_left_out(self):
         for mix, result in self.runs:
